@@ -12,11 +12,10 @@ import { customStatus } from './bank'
 import { FxSheet } from './fxpanel'
 import { SoundSheet } from './soundpanel'
 import { hasSnd, sndOf } from './chanfx'
-import { ext, extOf } from './extmidi'
 import { slotsOf, fxDef, groupSummary } from './fx'
 import type { FxSlot } from './fx'
 import { audioOn } from './engine'
-import { TIMBRES, GROUPS, FAVORITES, CUSTOM_GROUP, EXT_GROUP, customVersion } from './timbres'
+import { TIMBRES, GROUPS, FAVORITES, CUSTOM_GROUP, customVersion } from './timbres'
 import { Drawer, SettingsPanel, LearnPanel } from './panels'
 import { waitingValue, lastMsgValue, setBinding, findAction, learnOpen } from './learn'
 import { roleOf, connectedIds } from './midiconf'
@@ -360,7 +359,7 @@ function ZoneEditor({ layers, split, onChange, onClose }: { layers: Layer[]; spl
 function Picker({ onPick, onClose, padMode }: { onPick: (id: string | null) => void; onClose: () => void; padMode: boolean }) {
   const ver = useValue(customVersion)
   const hasCustom = ver > 0 && TIMBRES.some((t) => t.group === CUSTOM_GROUP)
-  const groups = [CUSTOM_GROUP, ...(padMode ? GROUPS.filter((g) => g !== 'Bateria' && g !== EXT_GROUP) : GROUPS)]
+  const groups = [CUSTOM_GROUP, ...(padMode ? GROUPS.filter((g) => g !== 'Bateria') : GROUPS)]
   const [group, setGroup] = useState<string>(hasCustom ? CUSTOM_GROUP : 'Favoritos')
   const [q, setQ] = useState('')
   const [edit, setEdit] = useState(false)
@@ -800,11 +799,7 @@ export default function App() {
           const access = await navigator.requestMIDIAccess()
           accessRef.current = access
           bindInputs(access)
-          ext.setAccess(access)
-          access.onstatechange = () => {
-            bindInputs(access)
-            ext.refresh()
-          }
+          access.onstatechange = () => bindInputs(access)
         } catch {
           setMidiNote('O MIDI foi bloqueado neste navegador. Abra no Chrome e permita o acesso ao MIDI. Dá para tocar pelo teclado da tela.')
         }
@@ -1199,7 +1194,6 @@ export default function App() {
           color={LCOLORS[sndEdit]}
           name={byId(section.layers[sndEdit].timbre)?.name ?? 'Sem som'}
           onSnd={(snd) => editLayer(sndEdit, { snd })}
-          onExt={(e) => editLayer(sndEdit, { ext: e })}
           onRemove={() => editLayer(sndEdit, { timbre: null })}
           onClose={() => setSndEdit(null)}
         />
@@ -1546,8 +1540,7 @@ export default function App() {
               <section className="strips" aria-label="Camadas" ref={stripsRef} onScroll={onStripsScroll}>
                 {section.layers.map((l, i) => {
                   const t = byId(l.timbre)
-                  const exOn = extOf(l).on
-                  const live = (!!t || exOn) && !l.off
+                  const live = !!t && !l.off
                   return (
                     <div
                       key={i}
@@ -1564,16 +1557,16 @@ export default function App() {
                       <div className="strip-top">
                         <button
                           className={'power' + (live ? ' on' : '')}
-                          disabled={!t && !exOn}
+                          disabled={!t}
                           onClick={() => editLayer(i, { off: !l.off })}
                           aria-label={live ? 'Desligar camada' : 'Ligar camada'}
                           aria-pressed={live}
                         />
                         <button className="lname" onClick={() => setPickerFor(i)}>
-                          <small>{t ? (t.drum ? 'Kit de bateria' : t.group) : exOn ? 'MIDI externo' : `Camada ${i + 1}`}</small>
-                          {t ? t.name : exOn ? `Canal ${extOf(l).ch}` : 'Escolher timbre'}
+                          <small>{t ? (t.drum ? 'Kit de bateria' : t.group) : `Camada ${i + 1}`}</small>
+                          {t ? t.name : 'Escolher timbre'}
                         </button>
-                        <button className={'sndbtn' + (hasSnd(l) || exOn ? ' on' : '')} onClick={() => setSndEdit(i)} aria-label="Compressor, equalizador e ajustes deste som" title="Compressor, equalizador e ajustes">
+                        <button className={'sndbtn' + (hasSnd(l) ? ' on' : '')} disabled={!t} onClick={() => setSndEdit(i)} aria-label="Compressor, equalizador e ajustes deste som" title="Compressor, equalizador e ajustes">
                           <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M5 4v16M12 4v16M19 4v16" /><circle cx="5" cy="9" r="2.2" fill="currentColor" /><circle cx="12" cy="15" r="2.2" fill="currentColor" /><circle cx="19" cy="8" r="2.2" fill="currentColor" /></svg>
                         </button>
                       </div>
