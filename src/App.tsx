@@ -527,7 +527,7 @@ function Picker({ onPick, onClose, padMode }: { onPick: (id: string | null) => v
 }
 
 function useWide() {
-  const q = '(min-width: 820px) and (orientation: landscape)'
+  const q = '(min-width: 740px) and (orientation: landscape)'
   const [w, setW] = useState(() => window.matchMedia(q).matches)
   useEffect(() => {
     const m = window.matchMedia(q)

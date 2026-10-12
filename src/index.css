@@ -530,7 +530,7 @@ input[type=range] { height: 18px; }
 .bankbar { display: none; }
 
 /* ===== Modo tablet / tela deitada: tudo cabe na tela, sem rolagem ===== */
-@media (min-width: 820px) and (orientation: landscape) {
+@media (min-width: 740px) and (orientation: landscape) {
   html, body, #root { height: 100%; }
   .app.fit { height: 100dvh; padding: 8px 12px 8px; gap: 8px; overflow: hidden; max-width: none; }
   .app.fit > * { min-height: 0; }
@@ -599,7 +599,7 @@ input[type=range] { height: 18px; }
   .fit .sec-tools label.inline { font-size: .66rem; display: flex; flex-direction: column; gap: 1px; }
   .fit .sec-tools select { padding: 4px 6px; font-size: .78rem; }
 }
-@media (min-width: 820px) and (orientation: landscape) and (max-height: 660px) {
+@media (min-width: 740px) and (orientation: landscape) and (max-height: 660px) {
   .fit .padband .tone { min-height: 30px; font-size: .9rem; }
   .fit .padband .tone small { display: none; }
   .fit .padband { gap: 4px; }
@@ -608,7 +608,7 @@ input[type=range] { height: 18px; }
 /* app instalado: sem puxar-para-atualizar, sem zoom de toque duplo, respeita a área segura do iPad */
 html, body { overscroll-behavior: none; -webkit-tap-highlight-color: transparent; touch-action: manipulation; -webkit-user-select: none; user-select: none; }
 input, select, textarea { -webkit-user-select: text; user-select: text; }
-@media (min-width: 820px) and (orientation: landscape) { .app.fit { padding-left: max(12px, env(safe-area-inset-left)); padding-right: max(12px, env(safe-area-inset-right)); padding-bottom: max(8px, env(safe-area-inset-bottom)); } }
+@media (min-width: 740px) and (orientation: landscape) { .app.fit { padding-left: max(12px, env(safe-area-inset-left)); padding-right: max(12px, env(safe-area-inset-right)); padding-bottom: max(8px, env(safe-area-inset-bottom)); } }
 
 /* topo: nome do app à esquerda, controles à direita, menu (☰) no canto direito */
 .panic { width: 50px; height: 50px; }
@@ -617,7 +617,7 @@ input, select, textarea { -webkit-user-select: text; user-select: text; }
 .sl-item b { font-size: .84rem; white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.15; }
 .sl-item { padding: 8px; gap: 8px; }
 .sl-item .k { min-width: 28px; font-size: .78rem; padding: 4px 0; }
-@media (min-width: 820px) and (orientation: landscape) {
+@media (min-width: 740px) and (orientation: landscape) {
   .fit .topbar h1 { display: block; font-size: 1.05rem; margin: 0 4px 0 0; align-self: center; }
   .fit .topbar .tempo { margin-left: auto; }
   .fit .topbar .ctl.master { margin-left: 0; }
@@ -626,7 +626,7 @@ input, select, textarea { -webkit-user-select: text; user-select: text; }
   .fit .topbar .hamb { align-self: center; width: 44px; height: 44px; margin: 0; }
   .fit .sl-item b { font-size: .8rem; }
 }
-@media (min-width: 820px) and (orientation: landscape) { .fit .topbar .ctl label { white-space: nowrap; font-size: .62rem; } }
+@media (min-width: 740px) and (orientation: landscape) { .fit .topbar .ctl label { white-space: nowrap; font-size: .62rem; } }
 
 /* menu da seção (segurar o botão) */
 .overlay.center { align-items: center; }
@@ -649,7 +649,7 @@ input, select, textarea { -webkit-user-select: text; user-select: text; }
 .setlist ol li.dragging .grip { color: var(--cyan); cursor: grabbing; }
 
 /* tablet deitado: repertório + pad na esquerda, 5 canais à direita */
-@media (min-width: 820px) and (orientation: landscape) {
+@media (min-width: 740px) and (orientation: landscape) {
   .fit .rig { grid-template-columns: 272px minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto; }
   .fit .setlist { grid-column: 1; grid-row: 1; }
   .fit .padband { grid-column: 1; grid-row: 2; overflow: visible; }
@@ -681,7 +681,7 @@ input, select, textarea { -webkit-user-select: text; user-select: text; }
   .fit .padband .hint { display: none; }
   .fit .pad-head h2 { font-size: .95rem; }
 }
-@media (min-width: 820px) and (orientation: landscape) {
+@media (min-width: 740px) and (orientation: landscape) {
   .fit .padband { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 6px 8px; }
   .fit .padband > * { grid-column: 1 / -1; }
   .fit .padband > .pad-head { grid-column: 1; grid-row: 1; }
@@ -696,7 +696,7 @@ input, select, textarea { -webkit-user-select: text; user-select: text; }
 /* ===== v3: coluna esquerda (repertório + pad), seções embaixo dos canais ===== */
 .leftcol { display: contents; }
 .setlist { order: 1; } .center { order: 2; } .padband { order: 3; } .rig > .dock { grid-column: 1 / -1; order: 4; }
-@media (min-width: 820px) and (orientation: landscape) {
+@media (min-width: 740px) and (orientation: landscape) {
   .fit .leftcol { display: flex; flex-direction: column; gap: 10px; grid-column: 1; grid-row: 1 / span 2; min-height: 0; }
   .fit .leftcol .setlist { flex: 1; min-height: 0; grid-column: auto; grid-row: auto; }
   .fit .leftcol .padband { flex: none; grid-column: auto; grid-row: auto; }
@@ -716,10 +716,10 @@ input, select, textarea { -webkit-user-select: text; user-select: text; }
   .fit .padband > .row { grid-column: 2; }
   .fit .padband > .pad-head { grid-column: 1; }
 }
-@media (min-width: 820px) and (orientation: landscape) { .fit .leftcol .setlist { flex: 0 1 auto; } }
+@media (min-width: 740px) and (orientation: landscape) { .fit .leftcol .setlist { flex: 0 1 auto; } }
 
 /* pad: sem título nem "Entrada"; ligar à esquerda, nome do timbre no centro, tempo de entrada à direita */
-@media (min-width: 820px) and (orientation: landscape) {
+@media (min-width: 740px) and (orientation: landscape) {
   .fit .padband { grid-template-columns: 44px 1fr 44px; }
   .fit .padband > .pad-head { grid-column: 1; grid-row: 1; justify-content: flex-start; }
   .fit .padband > .pad-head h2 { display: none; }
@@ -733,7 +733,7 @@ input, select, textarea { -webkit-user-select: text; user-select: text; }
 
 /* Área segura do iPad (relógio/dia da semana no topo) */
 .app { padding-top: max(14px, calc(env(safe-area-inset-top) + 10px)); }
-@media (min-width: 820px) and (orientation: landscape) { .app.fit { padding-top: max(10px, calc(env(safe-area-inset-top) + 12px)); } }
+@media (min-width: 740px) and (orientation: landscape) { .app.fit { padding-top: max(10px, calc(env(safe-area-inset-top) + 12px)); } }
 /* Tela inicial (antes de carregar): título mais abaixo, longe do relógio do iPad */
 .app:not(.fit) { padding-top: max(28px, calc(env(safe-area-inset-top) + 26px)); }
 .app:not(.fit) .topbar h1 { margin-top: 6px; }
@@ -851,7 +851,7 @@ h1 span { color: var(--cyan); text-shadow: 0 0 16px #00e5ff77; }
 .arp-latch small { color: var(--muted); font-size: .72rem; }
 .arp-latch.on { border-color: var(--c); background: color-mix(in srgb, var(--c) 20%, var(--panel)); }
 @media (max-height: 760px) { .arp-bars { height: 110px; } .fxsheet { padding: 10px 12px; gap: 8px; } }
-@media (min-width: 820px) and (max-width: 1150px) and (orientation: landscape) {
+@media (min-width: 740px) and (max-width: 1150px) and (orientation: landscape) {
   .fit .fxpow { width: 20px; }
   .fit .fxpow::after { width: 10px; height: 10px; margin: -5px 0 0 -5px; }
   .fit .fxname { padding: 2px 4px; }
@@ -967,3 +967,27 @@ h1 span { color: var(--cyan); text-shadow: 0 0 16px #00e5ff77; }
 .upbox span { color: var(--muted); font-size: .85rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .upbox progress { width: 100%; height: 10px; accent-color: var(--cyan); }
 .upbox small { color: var(--muted); }
+
+/* Celular em pé: pede para girar (o app é feito para a tela deitada) */
+@media (orientation: portrait) and (max-width: 700px) {
+  body::before {
+    content: '↻\A Gire o celular\A para o modo paisagem';
+    white-space: pre;
+    position: fixed; inset: 0; z-index: 2147483647;
+    display: flex; align-items: center; justify-content: center; text-align: center;
+    background: #0a0612; color: #fff; font: 600 1.25rem/1.6 system-ui, sans-serif;
+  }
+}
+
+/* Celular deitado: barra do topo rola de lado em vez de amontoar; controles mais baixos */
+@media (orientation: landscape) and (max-height: 480px) {
+  .fit .topbar { overflow-x: auto; scrollbar-width: none; align-items: center; }
+  .fit .topbar::-webkit-scrollbar { display: none; }
+  .fit .topbar > * { flex-shrink: 0; }
+  .fit .topbar .ctl label { display: none; }
+  .fit .topbar .ctl select, .fit .topbar .stepper, .fit .topbar .ctl .ghost, .fit .topbar .metrobtn { height: 36px; }
+  .fit .topbar .ctl.master { margin-left: 0; }
+}
+@media (orientation: landscape) and (max-height: 480px) {
+  .fit .topbar .hamb { position: sticky; right: 0; z-index: 5; box-shadow: -10px 0 10px 4px #0a0612; }
+}
