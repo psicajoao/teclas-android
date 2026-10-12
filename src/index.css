@@ -730,3 +730,13 @@ input, select, textarea { -webkit-user-select: text; user-select: text; }
   .fit .padband .padfader .fader { grid-column: 3; grid-row: 2; }
   .fit .padband .knobs { grid-row: 3; }
 }
+
+/* Área segura do iPad (relógio/dia da semana no topo) */
+.app { padding-top: max(14px, calc(env(safe-area-inset-top) + 10px)); }
+@media (min-width: 820px) and (orientation: landscape) { .app.fit { padding-top: max(10px, calc(env(safe-area-inset-top) + 12px)); } }
+/* Tela inicial (antes de carregar): título mais abaixo, longe do relógio do iPad */
+.app:not(.fit) { padding-top: max(28px, calc(env(safe-area-inset-top) + 26px)); }
+.app:not(.fit) .topbar h1 { margin-top: 6px; }
+
+.bpm-in { width: 3.1ch; min-width: 0; font: inherit; font-size: 1.5rem; font-weight: 800; letter-spacing: -.02em; text-align: center; color: inherit; background: transparent; border: 0; border-bottom: 1px dashed #fff3; padding: 0; outline: none; }
+.bpm-in:focus { border-bottom-color: var(--cyan); background: #ffffff10; border-radius: 4px; }

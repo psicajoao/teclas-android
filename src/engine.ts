@@ -16,9 +16,18 @@ export class Engine {
 
   /** Inicia o áudio e carrega o banco GM. Precisa ser chamado após um toque/clique do usuário. */
   start(): Promise<void> {
-    if (!this.starting) this.starting = this.init()
+    if (!this.starting) {
+      this.starting = this.init().catch((e) => {
+        this.starting = null
+        try { void this.ctx?.close() } catch { /* */ }
+        throw e
+      })
+    }
     return this.starting
   }
+
+  /** Progresso do download do banco GM (0–1), para mostrar na tela inicial. */
+  onProgress: ((p: number) => void) | null = null
 
   private async init() {
     const ctx = new AudioContext({ latencyHint: 'interactive' })
@@ -32,9 +41,44 @@ export class Engine {
     {
       const res = await fetch(BASE + 'sounds/GeneralUser-GS.sf2')
       if (!res.ok) throw new Error('Banco de sons GM não encontrado (public/sounds/GeneralUser-GS.sf2)')
-      await synth.soundBankManager.addSoundBank(await res.arrayBuffer(), 'gm')
+      const total = Number(res.headers.get('content-length')) || 32319396
+      let data: ArrayBuffer
+      if (res.body) {
+        const reader = res.body.getReader()
+        const chunks: Uint8Array[] = []
+        let got = 0
+        for (;;) {
+          const { done, value } = await reader.read()
+          if (done) break
+          chunks.push(value)
+          got += value.length
+          this.onProgress?.(Math.min(1, got / total))
+        }
+        const all = new Uint8Array(got)
+        let o = 0
+        for (const c of chunks) { all.set(c, o); o += c.length }
+        data = all.buffer
+      } else data = await res.arrayBuffer()
+      await synth.soundBankManager.addSoundBank(data, 'gm')
     }
     await synth.isReady
+    synth.setSystemParameter('reverbGain', 2.2)
+    synth.setSystemParameter('chorusGain', 3)
+    await ctx.resume()
+    this.ctx = ctx
+    this.synth = synth
+    if (location.search.includes('selftest')) void this.selfTest()
+  }
+
+  private customLoading: Promise<void> | null = null
+  /** SoundFonts do usuário: carregados em segundo plano depois que o app já está tocando. */
+  loadCustom(): Promise<void> {
+    if (!this.customLoading) this.customLoading = this.initCustom().catch(() => {})
+    return this.customLoading
+  }
+
+  private async initCustom() {
+    const synth = this.synth!
     // SoundFonts do usuário: todos carregados, cada um com seu deslocamento de banco; os presets novos de cada um viram timbres.
     await ensureMigrated()
     const key = (p: { bankMSB: number; bankLSB: number; program: number; isDrum: boolean }) => `${p.bankMSB}.${p.bankLSB}.${p.program}.${p.isDrum}`
@@ -55,13 +99,6 @@ export class Engine {
       }
     }
     registerCustom(found)
-    // Efeitos mais presentes (o padrão do sintetizador é discreto): afeta o Reverb das camadas e o Shimmer do pad.
-    synth.setSystemParameter('reverbGain', 2.2)
-    synth.setSystemParameter('chorusGain', 3)
-    await ctx.resume()
-    this.ctx = ctx
-    this.synth = synth
-    if (location.search.includes('selftest')) void this.selfTest()
   }
 
   async selfTest() {

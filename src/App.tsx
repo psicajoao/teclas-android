@@ -666,9 +666,12 @@ export default function App() {
     [onMidi],
   )
 
+  const [prog, setProg] = useState(0)
   const start = async () => {
     setStatus('loading')
     setError('')
+    setProg(0)
+    engine.onProgress = setProg
     try {
       await engine.start()
       rig.master = volume
@@ -689,6 +692,7 @@ export default function App() {
         setMidiNote('Este navegador não suporta MIDI. Use o Chrome.')
       }
       setStatus('ready')
+      void engine.loadCustom()
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
       setStatus('error')
@@ -698,6 +702,15 @@ export default function App() {
   useEffect(() => {
     if (accessRef.current) bindInputs(accessRef.current)
   }, [bindInputs])
+
+  // Quando os SoundFonts do usuário terminam de carregar em segundo plano, reaplica os timbres atuais.
+  const customVer = useValue(customVersion)
+  useEffect(() => {
+    if (!ready || customVer === 0) return
+    rig.apply(section.layers, 0)
+    pad.configure(padTim, cfg.vol)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [customVer, ready])
 
   const [menuOpen, setMenuOpen] = useState(false)
   const [learnShown, setLearnShown] = useState(false)
@@ -840,6 +853,7 @@ export default function App() {
     rig.setMaster(v)
   }
 
+  const [bpmText, setBpmText] = useState<string | null>(null)
   const setBpm = (n: number) => updateSong((s) => ({ ...s, bpm: clamp(Math.round(n), 40, 220) }))
   const nudgeBpm = (d: number) => updateSong((s) => ({ ...s, bpm: clamp((s.bpm ?? 120) + d, 40, 220) }))
   const tap = () => {
@@ -1002,7 +1016,18 @@ export default function App() {
                 −
               </button>
               <div className="bpm">
-                <b>{bpm}</b>
+                <input
+                  className="bpm-in"
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  aria-label="Andamento em BPM"
+                  value={bpmText ?? String(bpm)}
+                  onFocus={(e) => { setBpmText(String(bpm)); e.currentTarget.select() }}
+                  onChange={(e) => setBpmText(e.target.value.replace(/\D/g, '').slice(0, 3))}
+                  onBlur={() => { if (bpmText) setBpm(Number(bpmText)); setBpmText(null) }}
+                  onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); else if (e.key === 'Escape') { setBpmText(null); e.currentTarget.blur() } }}
+                />
                 <small>BPM</small>
               </div>
               <button className="ghost sq" onClick={() => nudgeBpm(1)} aria-label="Aumentar andamento">
@@ -1080,7 +1105,7 @@ export default function App() {
       {!ready ? (
         <section className="start">
           <button className="big" onClick={start} disabled={status === 'loading'}>
-            {status === 'loading' ? 'Carregando sons…' : 'Iniciar'}
+            {status === 'loading' ? (prog > 0 && prog < 1 ? `Baixando sons… ${Math.round(prog * 100)}%` : 'Carregando sons…') : status === 'error' ? 'Tentar de novo' : 'Iniciar'}
           </button>
           <p className="hint">Toque em Iniciar para ligar o áudio e conectar o teclado MIDI.</p>
           {error && <p className="error">{error}</p>}
