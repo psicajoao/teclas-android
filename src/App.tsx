@@ -484,6 +484,12 @@ export default function App() {
   const [songIdx, setSongIdx] = useState(initial.song)
   const [secIdx, setSecIdx] = useState(0)
   const [secMenu, setSecMenu] = useState<number | null>(null)
+  const [chMenu, setChMenu] = useState<number | null>(null)
+  const [chMode, setChMode] = useState<'insert' | 'swap'>('insert')
+  const [chAll, setChAll] = useState(true)
+  const chTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const chFired = useRef(false)
+  const chStart = useRef<{ x: number; y: number } | null>(null)
   const pressTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const longFired = useRef(false)
   const [pickerFor, setPickerFor] = useState<number | 'pad' | null>(null)
@@ -604,6 +610,35 @@ export default function App() {
       return n
     })
   }, [])
+
+  // Teclado da tela: cada dedo/mouse é acompanhado; deslizar sobre as teclas toca todas (glissando).
+  const fingers = useRef(new Map<number, number>())
+  const noteAt = (x: number, y: number): number | null => {
+    const el = document.elementFromPoint(x, y)?.closest('[data-n]') as HTMLElement | null
+    return el ? Number(el.dataset.n) : null
+  }
+  const kbDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    const n = noteAt(e.clientX, e.clientY)
+    if (n === null) return
+    try { e.currentTarget.setPointerCapture(e.pointerId) } catch { /* */ }
+    fingers.current.set(e.pointerId, n)
+    press(n, 100)
+  }
+  const kbMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    const cur = fingers.current.get(e.pointerId)
+    if (cur === undefined) return
+    const n = noteAt(e.clientX, e.clientY)
+    if (n === null || n === cur) return
+    fingers.current.set(e.pointerId, n)
+    release(cur)
+    press(n, 100)
+  }
+  const kbUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    const cur = fingers.current.get(e.pointerId)
+    if (cur === undefined) return
+    fingers.current.delete(e.pointerId)
+    release(cur)
+  }
 
   const onMidi = useCallback(
     (e: MIDIMessageEvent) => {
@@ -823,6 +858,47 @@ export default function App() {
     if (ready) rig.apply(rest[idx].sections[0].layers, 0)
   }
 
+  const chDown = (e: React.PointerEvent, i: number) => {
+    chFired.current = false
+    if ((e.target as HTMLElement).closest('.fader, .knobwrap, .power')) return
+    chStart.current = { x: e.clientX, y: e.clientY }
+    if (chTimer.current) clearTimeout(chTimer.current)
+    chTimer.current = setTimeout(() => {
+      chFired.current = true
+      setChMenu(i)
+    }, 500)
+  }
+  const chMove = (e: React.PointerEvent) => {
+    const st = chStart.current
+    if (st && Math.hypot(e.clientX - st.x, e.clientY - st.y) > 10 && chTimer.current) {
+      clearTimeout(chTimer.current)
+      chTimer.current = null
+    }
+  }
+  const chCancel = () => {
+    if (chTimer.current) clearTimeout(chTimer.current)
+    chTimer.current = null
+  }
+  const moveChannel = (from: number, to: number) => {
+    if (from === to) return
+    const re = <T,>(arr: T[]): T[] => {
+      const a = [...arr]
+      if (chMode === 'swap') {
+        ;[a[from], a[to]] = [a[to], a[from]]
+      } else {
+        const [x] = a.splice(from, 1)
+        a.splice(to, 0, x)
+      }
+      return a
+    }
+    const sections = song.sections.map((sec, i) => (chAll || i === secI ? { ...sec, layers: re(sec.layers) } : sec))
+    updateSong((s) => ({ ...s, sections }))
+    if (ready) rig.setLayers(sections[secI].layers)
+    setChMenu(null)
+    const el = stripsRef.current
+    if (el) el.scrollTo({ left: Math.floor(to / perPage) * el.clientWidth * 0.98, behavior: 'smooth' })
+  }
+
   const moveSection = (i: number, d: number) => {
     const j = i + d
     if (j < 0 || j >= song.sections.length) return
@@ -970,6 +1046,38 @@ export default function App() {
 
   return (
     <div className={'app' + (ready ? ' fit' : '')}>
+      {chMenu != null && section.layers[chMenu] && (
+        <div className="overlay center" onClick={() => setChMenu(null)}>
+          <div className="secmenu" role="dialog" aria-label="Mover canal" onClick={(e) => e.stopPropagation()}>
+            <h3>
+              Canal {chMenu + 1}
+              {byId(section.layers[chMenu].timbre) ? ' · ' + byId(section.layers[chMenu].timbre)!.name : ''}
+            </h3>
+            <div className="secmenu-row">
+              <button className={'ghost' + (chMode === 'insert' ? ' on' : '')} onClick={() => setChMode('insert')}>
+                Inserir (empurra os outros)
+              </button>
+              <button className={'ghost' + (chMode === 'swap' ? ' on' : '')} onClick={() => setChMode('swap')}>
+                Trocar de lugar
+              </button>
+            </div>
+            <div className="chgrid" aria-label="Mover para o canal">
+              {section.layers.map((l, j) => (
+                <button key={j} className="ghost" disabled={j === chMenu} onClick={() => moveChannel(chMenu, j)}>
+                  <b>{j + 1}</b>
+                  <small>{byId(l.timbre)?.name ?? '—'}</small>
+                </button>
+              ))}
+            </div>
+            <label className="chall">
+              <input type="checkbox" checked={chAll} onChange={(e) => setChAll(e.target.checked)} /> Em todas as seções da música
+            </label>
+            <button className="ghost" onClick={() => setChMenu(null)}>
+              Cancelar
+            </button>
+          </div>
+        </div>
+      )}
       {secMenu != null && song.sections[secMenu] && (
         <div className="overlay center" onClick={() => setSecMenu(null)}>
           <div className="secmenu" role="dialog" aria-label="Opções da seção" onClick={(e) => e.stopPropagation()}>
@@ -1247,7 +1355,18 @@ export default function App() {
                   const t = byId(l.timbre)
                   const live = !!t && !l.off
                   return (
-                    <div key={i} className={'strip' + (live ? '' : ' dim')} style={{ ['--c' as string]: LCOLORS[i] }}>
+                    <div
+                      key={i}
+                      className={'strip' + (live ? '' : ' dim')}
+                      style={{ ['--c' as string]: LCOLORS[i] }}
+                      onPointerDown={(e) => chDown(e, i)}
+                      onPointerMove={chMove}
+                      onPointerUp={chCancel}
+                      onPointerCancel={chCancel}
+                      onPointerLeave={chCancel}
+                      onContextMenu={(e) => { e.preventDefault(); chFired.current = true; setChMenu(i) }}
+                      onClickCapture={(e) => { if (chFired.current) { e.stopPropagation(); e.preventDefault(); chFired.current = false } }}
+                    >
                       <div className="strip-top">
                         <button
                           className={'power' + (live ? ' on' : '')}
@@ -1384,33 +1503,19 @@ export default function App() {
                     return <i key={i} style={{ top: i * 2.2, left: `${from * 100}%`, width: `${(to - from) * 100}%`, background: LCOLORS[i] }} />
                   })}
                 </div>
-                <div className={'keyboard' + (bigKb ? ' tall' : '')}>
+                <div
+                  className={'keyboard' + (bigKb ? ' tall' : '')}
+                  onPointerDown={kbDown}
+                  onPointerMove={kbMove}
+                  onPointerUp={kbUp}
+                  onPointerCancel={kbUp}
+                  onLostPointerCapture={kbUp}
+                >
                   {whites.map((n) => (
-                    <div
-                      key={n}
-                      className={'key white' + (active.has(n) ? ' down' : '') + ''}
-                      onPointerDown={(e) => {
-                        e.currentTarget.setPointerCapture(e.pointerId)
-                        press(n, 100)
-                      }}
-                      onPointerUp={() => release(n)}
-                      onPointerCancel={() => release(n)}
-                    >
+                    <div key={n} data-n={n} className={'key white' + (active.has(n) ? ' down' : '')}>
                       {n % 12 === 0 && <span>{label(n)}</span>}
                       {!isBlack(n + 1) || n + 1 > kbLast ? null : (
-                        <div
-                          className={'key black' + (active.has(n + 1) ? ' down' : '')}
-                          onPointerDown={(e) => {
-                            e.stopPropagation()
-                            e.currentTarget.setPointerCapture(e.pointerId)
-                            press(n + 1, 100)
-                          }}
-                          onPointerUp={(e) => {
-                            e.stopPropagation()
-                            release(n + 1)
-                          }}
-                          onPointerCancel={() => release(n + 1)}
-                        />
+                        <div data-n={n + 1} className={'key black' + (active.has(n + 1) ? ' down' : '')} />
                       )}
                     </div>
                   ))}
