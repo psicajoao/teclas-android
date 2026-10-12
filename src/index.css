@@ -953,3 +953,11 @@ h1 span { color: var(--cyan); text-shadow: 0 0 16px #00e5ff77; }
 .seg3 button.on { background: var(--cyan); color: #000; }
 .fit .seg3 button { min-height: 34px; min-width: 32px; padding: 0 8px; }
 .seg3.inrow { flex: none; align-self: center; }
+
+/* ---- MIDI Learn: controles novos por canal ---- */
+.wf-mini { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
+.wf-mini .spot-hit, .spot.mini .spot-hit { min-height: 36px; padding: 4px 4px; font-size: .78rem; }
+.spot.mini .sl { font-size: .74rem; }
+.spot.mini.knobspot .spot-hit { min-height: 64px; }
+.wf-layers { grid-template-columns: repeat(5, 1fr); }
+@media (max-width: 700px) { .wf-layers { grid-template-columns: repeat(3, 1fr); } }

@@ -267,7 +267,7 @@ function Spot({ id, label, kind = 'btn', className = '' }: { id: string; label: 
   const b = binds[id]
   const wait = waiting === id
   return (
-    <div className={'spot ' + kind + (b ? ' bound' : '') + (wait ? ' wait' : '') + ' ' + className}>
+    <div className={'spot ' + (kind === 'knob' ? 'knobspot' : kind) + (b ? ' bound' : '') + (wait ? ' wait' : '') + ' ' + className}>
       <button className="spot-hit" onClick={() => waitingValue.set(wait ? null : id)} aria-pressed={wait} aria-label={`Ensinar: ${label}`}>
         {kind === 'slider' && <i className="bar" />}
         {kind === 'vslider' && <i className="vbar" />}
@@ -336,18 +336,31 @@ export function LearnPanel({ onClose, hasMidi }: { onClose: () => void; hasMidi:
           <Spot id="transpose:+1" label="Transp. +" />
           <Spot id="click" label="Volume do clique" kind="slider" />
           <Spot id="tap" label="Tap tempo" />
+          <Spot id="clickpan:-1" label="Clique: esquerdo" />
+          <Spot id="clickpan:0" label="Clique: centro" />
+          <Spot id="clickpan:1" label="Clique: direito" />
           <Spot id="master" label="Volume geral" kind="slider" />
           <Spot id="panic" label="Panic" />
         </section>
         <section className="wf-row">
           <Spot id="song:prev" label="◀ Música anterior" />
           <Spot id="song:next" label="Próxima música ▶" />
+          <Spot id="list:prev" label="◀ Lista anterior" />
+          <Spot id="list:next" label="Próxima lista ▶" />
         </section>
         <section className="wf-layers">
           {Array.from({ length: 10 }, (_, i) => (
             <div className="wf-layer" key={i}>
               <Spot id={`layer:${i}:power`} label={`Camada ${i + 1}`} />
               <Spot id={`layer:${i}:vol`} label="Volume" kind="vslider" />
+              <Spot id={`layer:${i}:out`} label="Ganho de saída" kind="knob" className="mini" />
+              <div className="wf-mini">
+                <Spot id={`layer:${i}:fx0`} label="MIDI" className="mini" />
+                <Spot id={`layer:${i}:fx1`} label="Efeitos" className="mini" />
+                <Spot id={`layer:${i}:fx2`} label="Som" className="mini" />
+                <Spot id={`layer:${i}:comp`} label="Comp." className="mini" />
+                <Spot id={`layer:${i}:eq`} label="EQ" className="mini" />
+              </div>
             </div>
           ))}
         </section>

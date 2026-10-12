@@ -11,7 +11,7 @@ import type { Timbre } from './timbres'
 import { customStatus } from './bank'
 import { FxSheet } from './fxpanel'
 import { SoundSheet } from './soundpanel'
-import { hasSnd } from './chanfx'
+import { hasSnd, sndOf } from './chanfx'
 import { slotsOf, fxDef, groupSummary } from './fx'
 import type { FxSlot } from './fx'
 import { audioOn } from './engine'
@@ -1046,6 +1046,14 @@ export default function App() {
     if (id === 'pad:bright') return setCfg((x) => ({ ...x, bright: sliderOf(value) }))
     if (id === 'pad:shimmer') return setCfg((x) => ({ ...x, shimmer: sliderOf(value) }))
     if (a === 'layer' && c === 'vol') return editLayer(Number(b), { vol: sliderOf(value) })
+    if (a === 'layer' && c === 'out') {
+      // knob/fader = ganho de saída do canal (−24 a +24 dB, meio = 0 dB); liga o compressor se precisar
+      const li = Number(b)
+      const cur = sndOf(section.layers[li])
+      let db = Math.round(((sliderOf(value) / 127) * 48 - 24) * 2) / 2
+      if (Math.abs(db) < 0.6) db = 0
+      return editLayer(li, { snd: { ...cur, comp: { ...cur.comp, outGain: db, on: cur.comp.on || db !== 0 } } })
+    }
     // sustain: segue o botão enquanto está apertado
     if (id === 'sustain') {
       rig.cc(64, on ? 127 : 0)
@@ -1071,6 +1079,17 @@ export default function App() {
     else if (a === 'pad' && b === 'tone') tapTone(Number(c))
     else if (a === 'layer' && c === 'power') editLayer(Number(b), { off: !section.layers[Number(b)].off })
     else if (id === 'kb:big') setBigKb((x) => !x)
+    else if (a === 'clickpan') setCfg((x) => ({ ...x, clickPan: Number(b) }))
+    else if (a === 'list') {
+      const ids: (string | null)[] = [null, ...setlists.map((x) => x.id)]
+      const at = Math.max(0, ids.indexOf(activeSl))
+      openSetlist(ids[clamp(at + (b === 'next' ? 1 : -1), 0, ids.length - 1)])
+    } else if (a === 'layer' && (c === 'fx0' || c === 'fx1' || c === 'fx2')) toggleFx(Number(b), Number(c[2]))
+    else if (a === 'layer' && (c === 'comp' || c === 'eq')) {
+      const li = Number(b)
+      const cur = sndOf(section.layers[li])
+      editLayer(li, { snd: c === 'comp' ? { ...cur, comp: { ...cur.comp, on: !cur.comp.on } } : { ...cur, eq: { ...cur.eq, on: !cur.eq.on } } })
+    }
   }
 
   const pickTimbre = (id: string | null) => {
