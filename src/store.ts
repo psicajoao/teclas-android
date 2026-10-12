@@ -1,7 +1,10 @@
 import type { Layer, Section } from './rig'
 import { LAYER_COUNT } from './rig'
 
-export type Song = { name: string; fade: number; split: number; sections: Section[]; key?: number | null; bpm?: number; transpose?: number }
+export type Song = { id?: string; name: string; fade: number; split: number; sections: Section[]; key?: number | null; bpm?: number; transpose?: number }
+/** Lista de músicas para um culto/evento: guarda só as ordens das músicas da biblioteca. */
+export type Setlist = { id: string; name: string; date?: string; ids: string[] }
+export const uid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4)
 export type PadConfig = { timbre: string; vol: number; fade: number; beats: number; click: number; bright: number; shimmer: number }
 
 const KEY = 'teclas-android.v1'
@@ -9,6 +12,7 @@ const L = (timbre: string | null, vol = 100, zone: Layer['zone'] = 'all'): Layer
 const pad = (ls: Layer[]): Layer[] => [...ls, ...Array.from({ length: LAYER_COUNT }, () => L(null))].slice(0, LAYER_COUNT)
 
 export const newSong = (name = 'Nova música'): Song => ({
+  id: uid(),
   name,
   fade: 2,
   split: 60,
@@ -48,7 +52,7 @@ function fiveSections(secs: Section[]): Section[] {
   return out
 }
 
-export function load(): { songs: Song[]; song: number } {
+export function load(): { songs: Song[]; song: number; setlists: Setlist[]; active: string | null } {
   try {
     const raw = localStorage.getItem(KEY)
     if (raw) {
@@ -56,20 +60,25 @@ export function load(): { songs: Song[]; song: number } {
       if (Array.isArray(d.songs) && d.songs.length && d.songs.every(valid)) {
         const songs = (d.songs as Song[]).map((s) => ({
           ...s,
+          id: s.id ?? uid(),
           sections: fiveSections(s.sections.map((sec) => ({ ...sec, layers: pad(sec.layers) }))),
         }))
-        return { songs, song: Math.min(Math.max(0, d.song | 0), d.songs.length - 1) }
+        const setlists: Setlist[] = Array.isArray(d.setlists)
+          ? d.setlists.filter((x: Setlist) => x && typeof x.id === 'string' && typeof x.name === 'string' && Array.isArray(x.ids))
+          : []
+        const active = typeof d.active === 'string' && setlists.some((x) => x.id === d.active) ? (d.active as string) : null
+        return { songs, song: Math.min(Math.max(0, d.song | 0), d.songs.length - 1), setlists, active }
       }
     }
   } catch {
     /* sem armazenamento: segue com o padrão */
   }
-  return { songs: [newSong('Minha primeira música')], song: 0 }
+  return { songs: [newSong('Minha primeira música')], song: 0, setlists: [], active: null }
 }
 
-export function save(songs: Song[], song: number) {
+export function save(songs: Song[], song: number, setlists: Setlist[] = [], active: string | null = null) {
   try {
-    localStorage.setItem(KEY, JSON.stringify({ songs, song }))
+    localStorage.setItem(KEY, JSON.stringify({ songs, song, setlists, active }))
   } catch {
     /* ignora */
   }

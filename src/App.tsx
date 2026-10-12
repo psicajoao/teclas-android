@@ -19,8 +19,9 @@ import { TIMBRES, GROUPS, FAVORITES, CUSTOM_GROUP, customVersion } from './timbr
 import { Drawer, SettingsPanel, LearnPanel } from './panels'
 import { waitingValue, lastMsgValue, setBinding, findAction, learnOpen } from './learn'
 import { roleOf, connectedIds } from './midiconf'
-import { load, save, newSong, loadPad, savePad } from './store'
-import type { Song } from './store'
+import { load, save, newSong, loadPad, savePad, uid } from './store'
+import type { Song, Setlist } from './store'
+import { SetlistPage } from './setlists'
 import './index.css'
 
 type Status = 'idle' | 'loading' | 'ready' | 'error'
@@ -489,6 +490,9 @@ export default function App() {
   const [initial] = useState(load)
   const [songs, setSongs] = useState<Song[]>(initial.songs)
   const [songIdx, setSongIdx] = useState(initial.song)
+  const [setlists, setSetlists] = useState<Setlist[]>(initial.setlists)
+  const [activeSl, setActiveSl] = useState<string | null>(initial.active)
+  const [slPage, setSlPage] = useState(false)
   const [secIdx, setSecIdx] = useState(0)
   const [secMenu, setSecMenu] = useState<number | null>(null)
   const [chMenu, setChMenu] = useState<number | null>(null)
@@ -519,6 +523,8 @@ export default function App() {
   const actionsRef = useRef({ select: (_i: number) => {}, step: (_d: number) => {}, song: (_d: number) => {}, metro: () => {}, run: (_id: string, _v: number, _k: string, _on: boolean) => {} })
   const lastOn = useRef<Record<string, boolean>>({})
 
+  const activeList = setlists.find((x) => x.id === activeSl) ?? null
+  const view = activeList ? activeList.ids.map((id) => songs.findIndex((x) => x.id === id)).filter((i) => i >= 0) : songs.map((_, i) => i)
   const song = songs[songIdx]
   const secI = Math.min(secIdx, song.sections.length - 1)
   const section = song.sections[secI]
@@ -527,7 +533,7 @@ export default function App() {
   const ready = status === 'ready'
   const padTim = byId(cfg.timbre) ?? { program: 89 }
 
-  useEffect(() => save(songs, songIdx), [songs, songIdx])
+  useEffect(() => save(songs, songIdx, setlists, activeSl), [songs, songIdx, setlists, activeSl])
   useEffect(() => savePad(cfg), [cfg])
   useEffect(() => pad.setTone(cfg.bright, cfg.shimmer), [cfg.bright, cfg.shimmer])
   const stripsRef = useRef<HTMLElement>(null)
@@ -539,6 +545,15 @@ export default function App() {
   const dragTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const dragging = useRef(false)
   const moveSongTo = (from: number, to: number) => {
+    if (activeList) {
+      if (to < 0 || to >= view.length || from === to) return
+      const ids = view.map((i) => songs[i].id!)
+      const [m] = ids.splice(from, 1)
+      ids.splice(to, 0, m)
+      setSetlists((all) => all.map((x) => (x.id === activeList.id ? { ...x, ids } : x)))
+      setDragSong(to)
+      return
+    }
     if (to < 0 || to >= songs.length || from === to) return
     const cur = songs[songIdx]
     const arr = [...songs]
@@ -794,6 +809,21 @@ export default function App() {
     }
   }
 
+  /** Próxima/anterior música dentro da lista que está aberta. */
+  const stepSong = (d: number) => {
+    if (!view.length) return
+    const pos = view.indexOf(songIdx)
+    changeSong(view[clamp((pos < 0 ? 0 : pos) + d, 0, view.length - 1)])
+  }
+  const addToActive = (id: string) => activeList && setSetlists((all) => all.map((x) => (x.id === activeList.id ? { ...x, ids: [...x.ids, id] } : x)))
+  /** Abre uma lista (ou null = todas as músicas) e vai para a primeira música dela. */
+  const openSetlist = (id: string | null) => {
+    setActiveSl(id)
+    const l = setlists.find((x) => x.id === id)
+    const v = l ? l.ids.map((sid) => songs.findIndex((x) => x.id === sid)).filter((i) => i >= 0) : songs.map((_, i) => i)
+    if (v.length && !v.includes(songIdx)) changeSong(v[0])
+  }
+
   const toggleMetro = () => {
     if (!ready) return
     if (metroOn) metro.stop()
@@ -805,7 +835,7 @@ export default function App() {
     actionsRef.current = {
       select: selectSection,
       step: (d) => selectSection(clamp(secI + d, 0, song.sections.length - 1)),
-      song: (d) => changeSong(clamp(songIdx + d, 0, songs.length - 1)),
+      song: (d) => stepSong(d),
       metro: toggleMetro,
       run: runAction,
     }
@@ -835,6 +865,7 @@ export default function App() {
   const addSong = () => {
     const n = newSong(`Música ${songs.length + 1}`)
     setSongs([...songs, n])
+    addToActive(n.id!)
     setSongIdx(songs.length)
     setSecIdx(0)
     rig.split = n.split
@@ -845,7 +876,9 @@ export default function App() {
   const duplicateSong = () => {
     const copy: Song = JSON.parse(JSON.stringify(song))
     copy.name = `${song.name} (cópia)`
+    copy.id = uid()
     setSongs([...songs, copy])
+    addToActive(copy.id)
     setSongIdx(songs.length)
     setSecIdx(0)
   }
@@ -857,6 +890,8 @@ export default function App() {
       setTimeout(() => setConfirmDel(false), 3000)
       return
     }
+    const gone = songs[songIdx].id
+    setSetlists((all) => all.map((x) => ({ ...x, ids: x.ids.filter((i) => i !== gone) })))
     const rest = songs.filter((_, i) => i !== songIdx)
     const idx = Math.min(songIdx, rest.length - 1)
     setSongs(rest)
@@ -1022,8 +1057,8 @@ export default function App() {
       if (!on || was) return
     } else if (!on) return
     if (a === 'sec') selectSection(Number(b))
-    else if (id === 'song:prev') changeSong(clamp(songIdx - 1, 0, songs.length - 1))
-    else if (id === 'song:next') changeSong(clamp(songIdx + 1, 0, songs.length - 1))
+    else if (id === 'song:prev') stepSong(-1)
+    else if (id === 'song:next') stepSong(1)
     else if (id === 'metro') toggleMetro()
     else if (id === 'tap') tap()
     else if (id === 'transpose:-1') changeTranspose(-1)
@@ -1063,6 +1098,24 @@ export default function App() {
 
   return (
     <div className={'app' + (ready ? ' fit' : '')}>
+      {slPage && (
+        <SetlistPage
+          songs={songs}
+          setlists={setlists}
+          active={activeSl}
+          current={songs[songIdx]?.id}
+          onSetlists={setSetlists}
+          onOpen={(id) => {
+            openSetlist(id)
+            setSlPage(false)
+          }}
+          onClose={() => setSlPage(false)}
+          onPlaySong={(id) => {
+            const i = songs.findIndex((x) => x.id === id)
+            if (i >= 0) changeSong(i)
+          }}
+        />
+      )}
       {sndEdit != null && section.layers[sndEdit] && (
         <SoundSheet
           layer={section.layers[sndEdit]}
@@ -1280,15 +1333,20 @@ export default function App() {
             <div className="leftcol">
             <aside className="setlist" aria-label="Repertório">
               <div className="sl-head">
-                <h2>Repertório</h2>
+                <button className="sl-title" onClick={() => setSlPage(true)} aria-label="Abrir listas de músicas" title="Abrir, criar e organizar listas">
+                  <h2>{activeList ? activeList.name || 'Sem nome' : 'Todas as músicas'}</h2>
+                  <small>{activeList ? `${activeList.date ? activeList.date.split('-').reverse().join('/') + ' · ' : ''}${view.length} música${view.length === 1 ? '' : 's'}` : 'Biblioteca ▾'}</small>
+                </button>
                 <button className="ghost sq" onClick={addSong} aria-label="Nova música">
                   +
                 </button>
               </div>
               <ol ref={listRef}>
-                {songs.map((s, i) => (
-                  <li key={i} className={dragSong === i ? 'dragging' : ''}>
-                    <button className={'sl-item' + (i === songIdx ? ' on' : '')} onClick={() => changeSong(i)}>
+                {view.map((si, i) => {
+                  const s = songs[si]
+                  return (
+                  <li key={si} className={dragSong === i ? 'dragging' : ''}>
+                    <button className={'sl-item' + (si === songIdx ? ' on' : '')} onClick={() => changeSong(si)}>
                       <span className="n">{i + 1}</span>
                       <span className="t">
                         <b>{s.name || 'Sem nome'}</b>
@@ -1313,7 +1371,8 @@ export default function App() {
                       </svg>
                     </button>
                   </li>
-                ))}
+                  )
+                })}
               </ol>
             </aside>
             <aside className="padband" aria-label="Pad contínuo">
@@ -1375,7 +1434,7 @@ export default function App() {
             </div>
             <main className="center">
               <section className="hero">
-                <button className="ghost sq round" onClick={() => changeSong(songIdx - 1)} disabled={songIdx === 0} aria-label="Música anterior">
+                <button className="ghost sq round" onClick={() => stepSong(-1)} disabled={view.indexOf(songIdx) <= 0} aria-label="Música anterior">
                   ◀
                 </button>
                 <div className="hero-mid">
@@ -1395,7 +1454,7 @@ export default function App() {
                     </button>
                   </div>
                 </div>
-                <button className="ghost sq round" onClick={() => changeSong(songIdx + 1)} disabled={songIdx === songs.length - 1} aria-label="Próxima música">
+                <button className="ghost sq round" onClick={() => stepSong(1)} disabled={view.indexOf(songIdx) >= view.length - 1} aria-label="Próxima música">
                   ▶
                 </button>
               </section>
