@@ -1,9 +1,12 @@
 import { WorkletSynthesizer } from 'spessasynth_lib'
+import { createValue } from './signal'
 import { listBanks, getBankData, ensureMigrated, bankInfo, BANK_STEP, customStatus } from './bank'
 import { registerCustom } from './timbres'
 import type { BankMeta } from './bank'
 
 const BASE = import.meta.env.BASE_URL
+/** true quando o áudio do navegador está ligado (rodando). */
+export const audioOn = createValue(true)
 
 export class Engine {
   ctx: AudioContext | null = null
@@ -26,6 +29,19 @@ export class Engine {
     return this.starting
   }
 
+  /** Religa o áudio dentro de um toque do usuário (o iOS exige): resume + um som mudo de 1 amostra. */
+  unlock(ctx: AudioContext | null = this.ctx) {
+    if (!ctx) return
+    try {
+      void ctx.resume().catch(() => {})
+      const b = ctx.createBuffer(1, 1, 22050)
+      const src = ctx.createBufferSource()
+      src.buffer = b
+      src.connect(ctx.destination)
+      src.start(0)
+    } catch { /* */ }
+  }
+
   /** Progresso do download do banco GM (0–1), para mostrar na tela inicial. */
   onProgress: ((p: number) => void) | null = null
   onStage: ((t: string) => void) | null = null
@@ -36,10 +52,12 @@ export class Engine {
     void ctx.resume().catch(() => {})
     // iOS: tocar mesmo com o modo silencioso ligado, e religar o áudio se o sistema o suspender.
     try { (navigator as unknown as { audioSession?: { type: string } }).audioSession!.type = 'playback' } catch { /* */ }
-    const wake = () => { if (ctx.state !== 'running') void ctx.resume().catch(() => {}) }
-    for (const ev of ['pointerdown', 'touchend', 'keydown'] as const) document.addEventListener(ev, wake, true)
+    const sync = () => audioOn.set(ctx.state === 'running')
+    const wake = () => { if (ctx.state !== 'running') this.unlock(ctx); sync() }
+    for (const ev of ['pointerdown', 'pointerup', 'touchend', 'click', 'keydown'] as const) document.addEventListener(ev, wake, true)
     document.addEventListener('visibilitychange', wake)
-    ctx.onstatechange = wake
+    ctx.onstatechange = () => { sync(); if (ctx.state !== 'running') void ctx.resume().catch(() => {}) }
+    setInterval(sync, 1000)
     await ctx.audioWorklet.addModule(BASE + 'spessasynth_processor.min.js')
     const synth = new WorkletSynthesizer(ctx)
     const analyser = ctx.createAnalyser()

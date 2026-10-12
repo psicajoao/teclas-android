@@ -9,6 +9,7 @@ import { parseMidi, noteName, DRUM_NAMES } from './midi'
 import { addBanks, removeBank, getHidden, setHidden, slotOf, listBanks, MAX_BANKS, bankInfo } from './bank'
 import type { Timbre } from './timbres'
 import { customStatus } from './bank'
+import { audioOn } from './engine'
 import { TIMBRES, GROUPS, FAVORITES, CUSTOM_GROUP, customVersion } from './timbres'
 import { Drawer, SettingsPanel, LearnPanel } from './panels'
 import { waitingValue, lastMsgValue, setBinding, findAction, learnOpen } from './learn'
@@ -704,6 +705,7 @@ export default function App() {
   )
 
   const sfStatus = useValue(customStatus)
+  const audioIsOn = useValue(audioOn)
   const [prog, setProg] = useState(0)
   const [stage, setStage] = useState('Carregando sons…')
   const start = async () => {
@@ -1079,6 +1081,11 @@ export default function App() {
             </button>
           </div>
         </div>
+      )}
+      {ready && !audioIsOn && (
+        <button className="sndoff" onClick={() => engine.unlock()}>
+          🔇 Som pausado pelo iPad. Toque aqui para ligar
+        </button>
       )}
       {ready && sfStatus && <div className="sfchip">{sfStatus}</div>}
       {secMenu != null && song.sections[secMenu] && (

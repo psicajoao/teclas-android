@@ -753,3 +753,5 @@ input, select, textarea { -webkit-user-select: text; user-select: text; }
 .strip { -webkit-touch-callout: none; user-select: none; -webkit-user-select: none; }
 
 .sfchip { position: fixed; top: max(6px, env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); z-index: 90; background: #1b1030f2; border: 1px solid var(--violet); color: #fff; padding: 6px 14px; border-radius: 999px; font-size: .8rem; pointer-events: none; box-shadow: 0 6px 20px #000a; }
+
+.sndoff { position: fixed; top: max(8px, env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); z-index: 95; background: #c2272d; color: #fff; border: 2px solid #fff; padding: 12px 20px; border-radius: 999px; font-size: 1rem; font-weight: 700; box-shadow: 0 8px 28px #000c; }
