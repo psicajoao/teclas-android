@@ -10,6 +10,8 @@ import { addBanks, removeBank, getHidden, setHidden, slotOf, listBanks, MAX_BANK
 import type { Timbre } from './timbres'
 import { customStatus } from './bank'
 import { FxSheet } from './fxpanel'
+import { SoundSheet } from './soundpanel'
+import { hasSnd } from './chanfx'
 import { slotsOf, fxDef, groupSummary } from './fx'
 import type { FxSlot } from './fx'
 import { audioOn } from './engine'
@@ -866,6 +868,7 @@ export default function App() {
     if (ready) rig.apply(rest[idx].sections[0].layers, 0)
   }
 
+  const [sndEdit, setSndEdit] = useState<number | null>(null)
   const [fxEdit, setFxEdit] = useState<{ layer: number; slot: number } | null>(null)
   const setSlots = (li: number, fx: FxSlot[]) => editLayer(li, { fx })
   const toggleFx = (li: number, si: number) => {
@@ -874,7 +877,7 @@ export default function App() {
   }
   const chDown = (e: React.PointerEvent, i: number) => {
     chFired.current = false
-    if ((e.target as HTMLElement).closest('.fader, .knobwrap, .power, .fxslot')) return
+    if ((e.target as HTMLElement).closest('.fader, .knobwrap, .power, .fxslot, .sndbtn')) return
     chStart.current = { x: e.clientX, y: e.clientY }
     if (chTimer.current) clearTimeout(chTimer.current)
     chTimer.current = setTimeout(() => {
@@ -1060,6 +1063,17 @@ export default function App() {
 
   return (
     <div className={'app' + (ready ? ' fit' : '')}>
+      {sndEdit != null && section.layers[sndEdit] && (
+        <SoundSheet
+          layer={section.layers[sndEdit]}
+          chIndex={sndEdit}
+          color={LCOLORS[sndEdit]}
+          name={byId(section.layers[sndEdit].timbre)?.name ?? 'Sem som'}
+          onSnd={(snd) => editLayer(sndEdit, { snd })}
+          onRemove={() => editLayer(sndEdit, { timbre: null })}
+          onClose={() => setSndEdit(null)}
+        />
+      )}
       {fxEdit && section.layers[fxEdit.layer] && (
         <FxSheet
           layer={section.layers[fxEdit.layer]}
@@ -1414,6 +1428,9 @@ export default function App() {
                         <button className="lname" onClick={() => setPickerFor(i)}>
                           <small>{t ? (t.drum ? 'Kit de bateria' : t.group) : `Camada ${i + 1}`}</small>
                           {t ? t.name : 'Escolher timbre'}
+                        </button>
+                        <button className={'sndbtn' + (hasSnd(l) ? ' on' : '')} disabled={!t} onClick={() => setSndEdit(i)} aria-label="Compressor, equalizador e ajustes deste som" title="Compressor, equalizador e ajustes">
+                          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M5 4v16M12 4v16M19 4v16" /><circle cx="5" cy="9" r="2.2" fill="currentColor" /><circle cx="12" cy="15" r="2.2" fill="currentColor" /><circle cx="19" cy="8" r="2.2" fill="currentColor" /></svg>
                         </button>
                       </div>
                       <div className="mix">

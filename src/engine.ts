@@ -3,6 +3,8 @@ import { createValue } from './signal'
 import { listBanks, getBankData, ensureMigrated, bankInfo, BANK_STEP, customStatus } from './bank'
 import { registerCustom } from './timbres'
 import type { BankMeta } from './bank'
+import { ChanFx } from './chanfx'
+import type { SndCfg } from './chanfx'
 
 const BASE = import.meta.env.BASE_URL
 /** true quando o áudio do navegador está ligado (rodando). */
@@ -12,6 +14,14 @@ export class Engine {
   ctx: AudioContext | null = null
   synth: WorkletSynthesizer | null = null
   private analyser: AnalyserNode | null = null
+  chains: ChanFx[] = []
+  /** Aplica a página de som (compressor/EQ/ajustes) de um canal MIDI. */
+  setChannelFx(ch: number, c: SndCfg, volFrac: number) {
+    this.chains[ch]?.apply(c, volFrac)
+    this.maxVoices[ch] = Math.max(1, c.set.voices)
+  }
+  private maxVoices: number[] = Array(16).fill(64)
+  private voices: number[][] = Array.from({ length: 16 }, () => [])
   private buf = new Uint8Array(512)
   private starting: Promise<void> | null = null
   /** Canal MIDI atual: 0 para timbres melódicos, 9 para bateria (canal de percussão do GM). */
@@ -62,9 +72,15 @@ export class Engine {
     const synth = new WorkletSynthesizer(ctx)
     const analyser = ctx.createAnalyser()
     analyser.fftSize = 512
-    synth.connect(analyser)
     analyser.connect(ctx.destination)
     this.analyser = analyser
+    // saída 0 = reverb/chorus/delay (global); saídas 1–16 = cada canal, seco, passando pela sua cadeia (compressor, EQ…)
+    ;(synth as unknown as { worklet: AudioWorkletNode }).worklet.connect(analyser, 0)
+    for (let ch = 0; ch < 16; ch++) {
+      const fx = new ChanFx(ctx, analyser)
+      this.chains[ch] = fx
+      synth.connectChannel(fx.input, ch)
+    }
     {
       this.onStage?.('Baixando sons…')
       const res = await fetch(BASE + 'sounds/GeneralUser-GS.sf2')
@@ -140,7 +156,7 @@ export class Engine {
 
   async selfTest() {
     const out: Record<string, number> = {}
-    for (const ch of [0, 5, 13, 14, 15]) {
+    for (const ch of [5, 0, 1, 15]) {
       this.program(0, ch)
       this.cc(7, 127, ch)
       this.cc(11, 127, ch)
@@ -173,6 +189,24 @@ export class Engine {
       fx[`r${rev}c${cho}`] = Math.round(m * 1000) / 1000
       await new Promise((r) => setTimeout(r, 2500))
     }
+    const gt: Record<string, number> = {}
+    const base = { comp: { on: true, inGain: 0, attack: 10, release: 150, ratio: 1, threshold: 0, mix: 100, outGain: 0 }, eq: { on: false, bands: Array(8).fill(0) }, set: { blockSustain: false, transpose: 0, voices: 64, volRange: 0, sampler: 0, pan: 0 } }
+    for (const g of [0, 12, -12]) {
+      this.setChannelFx(13, { ...base, comp: { ...base.comp, outGain: g } }, 1)
+      this.program(0, 13)
+      this.cc(7, 100, 13)
+      this.cc(11, 127, 13)
+      this.cc(91, 0, 13)
+      this.cc(93, 0, 13)
+      this.noteOn(60, 90, 13)
+      let m = 0
+      for (let i = 0; i < 8; i++) { await new Promise((r) => setTimeout(r, 60)); m = Math.max(m, this.peak()) }
+      gt[`g${g}`] = Math.round(m * 1000) / 1000
+      this.noteOff(60, 13)
+      await new Promise((r) => setTimeout(r, 1500))
+    }
+    this.setChannelFx(13, { ...base, comp: { ...base.comp, on: false } }, 1)
+    out.gt = JSON.stringify(gt) as unknown as number
     out.fx = JSON.stringify(fx) as unknown as number
     const sp = this.synth?.systemParameters as unknown as Record<string, unknown>
     out.sp = JSON.stringify({ rg: sp?.reverbGain, cg: sp?.chorusGain, en: sp?.effectsEnabled }) as unknown as number
@@ -203,9 +237,20 @@ export class Engine {
   }
 
   noteOn(note: number, velocity: number, channel = this.channel) {
+    const v = this.voices[channel]
+    if (v) {
+      const i = v.indexOf(note)
+      if (i >= 0) v.splice(i, 1)
+      v.push(note)
+      // limite de vozes do canal: solta a nota mais antiga
+      while (v.length > (this.maxVoices[channel] ?? 64)) this.synth?.noteOff(channel, v.shift()!)
+    }
     this.synth?.noteOn(channel, note, velocity)
   }
   noteOff(note: number, channel = this.channel) {
+    const v = this.voices[channel]
+    const i = v ? v.indexOf(note) : -1
+    if (i >= 0) v.splice(i, 1)
     this.synth?.noteOff(channel, note)
   }
   cc(controller: number, value: number, channel = this.channel) {

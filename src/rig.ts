@@ -1,4 +1,6 @@
 import { engine } from './engine'
+import { sndOf } from './chanfx'
+import type { SndPatch } from './chanfx'
 import { TIMBRES } from './timbres'
 import { rotorValue, arpStep } from './signal'
 import { fxValues, DIVS } from './fx'
@@ -7,7 +9,7 @@ import type { FxSlot, ArpCfg } from './fx'
 
 export type Zone = 'all' | 'left' | 'right'
 /** lo/hi: primeira e última nota (MIDI) em que a camada toca. Sem lo/hi vale `zone` (formato antigo). */
-export type Layer = { timbre: string | null; vol: number; zone: Zone; off?: boolean; pan?: number; reverb?: number; lo?: number; hi?: number; fx?: FxSlot[] }
+export type Layer = { timbre: string | null; vol: number; zone: Zone; off?: boolean; pan?: number; reverb?: number; lo?: number; hi?: number; fx?: FxSlot[]; snd?: SndPatch }
 export type Section = { name: string; layers: Layer[] }
 
 export const LAYER_COUNT = 10
@@ -95,6 +97,17 @@ class Rig {
     engine.cc(91, f.reverb, ch)
     engine.cc(93, f.chorus, ch)
     engine.cc(94, f.delay, ch)
+    engine.setChannelFx(ch, sndOf(l), l.vol / 127)
+    if (sndOf(l).set.blockSustain) engine.cc(64, 0, ch)
+  }
+
+  /** Transposição própria da camada (página de som → Ajustes), em semitons. */
+  private trOf(l: Layer | undefined) {
+    return l ? sndOf(l).set.transpose : 0
+  }
+  private sustainBlocked(ch: number) {
+    const i = this.assign.indexOf(ch)
+    return i >= 0 && !!this.layers[i] && sndOf(this.layers[i]).set.blockSustain
   }
 
   /** Corte do filtro: o valor da camada, aberto pela roda de modulação em direção ao máximo. */
@@ -243,7 +256,7 @@ class Rig {
         return
       }
       const f = fxValues(l)
-      const base = Math.max(0, Math.min(127, note + this.transpose))
+      const base = Math.max(0, Math.min(127, note + this.transpose + this.trOf(l)))
       if (f.arp) {
         this.arpPress(ch, base, velocity, f.arp)
         return
@@ -263,8 +276,10 @@ class Rig {
   noteOff(note: number) {
     this.held.get(note)?.forEach((o) => engine.noteOff(o.n, o.ch))
     this.held.delete(note)
-    const base = Math.max(0, Math.min(127, note + this.transpose))
-    for (const st of this.arps.values()) this.arpRelease(st, base)
+    for (const st of this.arps.values()) {
+      const i = this.assign.indexOf(st.ch)
+      this.arpRelease(st, Math.max(0, Math.min(127, note + this.transpose + this.trOf(this.layers[i]))))
+    }
   }
 
   /* ---- Arpejador (um por camada/canal) ---- */
@@ -501,7 +516,10 @@ class Rig {
       return
     }
     if (controller === 74) return // o brilho das camadas é controlado pela roda
-    ALL_CH.forEach((ch) => engine.cc(controller, value, ch))
+    ALL_CH.forEach((ch) => {
+      if (controller === 64 && this.sustainBlocked(ch)) return
+      engine.cc(controller, value, ch)
+    })
   }
 
   pitchBend(value: number) {
