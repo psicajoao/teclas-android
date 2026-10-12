@@ -1350,14 +1350,14 @@ export default function App() {
                 {metroOn ? <BeatDots beats={cfg.beats} /> : <span>Metrônomo</span>}
               </button>
               <div className="seg3 inrow looper" role="group" aria-label="Gravador de uma pista">
-                <button className={looper.state === 'rec' || looper.state === 'count' ? 'on' : ''} onClick={recClick} title="Gravar o que você toca, com contagem de um compasso no metrônomo">
-                  {looper.state === 'count' ? '● Contagem…' : looper.state === 'rec' ? '■ Gravando' : '● Gravar'}
+                <button className={looper.state === 'rec' || looper.state === 'count' ? 'on' : ''} aria-label="Gravar / parar gravação" onClick={recClick} title="Gravar o que você toca, com contagem de um compasso no metrônomo">
+                  {looper.state === 'rec' || looper.state === 'count' ? '■' : '●'}
                 </button>
-                <button className={looper.state === 'play' ? 'on' : ''} disabled={!song.loop} onClick={loopPlay} title="Tocar a pista em loop com o timbre atual">
-                  {looper.state === 'play' ? '■ Parar' : '▶ Tocar'}
+                <button className={looper.state === 'play' ? 'on' : ''} disabled={!song.loop} aria-label="Tocar / parar a pista" onClick={loopPlay} title="Tocar a pista em loop com o timbre atual">
+                  {looper.state === 'play' ? '■' : '▶'}
                 </button>
-                <button disabled={!song.loop} onClick={loopClear} title="Apagar a pista gravada">
-                  ✕ {song.loop ? `${song.loop.bars} comp.` : 'Pista'}
+                <button disabled={!song.loop} aria-label="Apagar a pista" onClick={loopClear} title={song.loop ? `Apagar a pista (${song.loop.bars} compassos)` : 'Apagar a pista gravada'}>
+                  ✕
                 </button>
               </div>
               <div className="seg3 inrow" title="De que lado sai o clique do metrônomo: E = esquerdo, C = centro, D = direito" role="radiogroup" aria-label="Lado de saída do clique">
