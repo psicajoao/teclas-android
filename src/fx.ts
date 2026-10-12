@@ -122,6 +122,16 @@ export const GROUPS: Record<'efx' | 'snd', { label: string; hint: string; items:
           { key: 'release', label: 'Release', def: 64, fmt: bip },
         ],
       },
+      {
+        id: 'od',
+        label: 'Overdrive',
+        hint: 'Distorção quente de válvula (ótimo no órgão)',
+        params: [
+          { key: 'drive', label: 'Drive', def: 45, fmt: pct },
+          { key: 'tone', label: 'Tom', def: 80, fmt: pct },
+          { key: 'level', label: 'Nível', def: 64, fmt: bip },
+        ],
+      },
     ],
   },
 }
@@ -242,10 +252,11 @@ export type FxValues = {
   oct: { shift: number; both: boolean } | null
   chord: number[] | null
   arp: ArpCfg | null
+  od: { drive: number; tone: number; level: number } | null
 }
 
 export function fxValues(l: Layer): FxValues {
-  const v: FxValues = { pan: 64, reverb: 0, chorus: 0, delay: 0, cutoff: 64, reso: 64, attack: 64, release: 64, oct: null, chord: null, arp: null }
+  const v: FxValues = { pan: 64, reverb: 0, chorus: 0, delay: 0, cutoff: 64, reso: 64, attack: 64, release: 64, oct: null, chord: null, arp: null, od: null }
   const [mid, efx, snd] = slotsOf(l)
   if (mid.type && mid.on) {
     if (mid.type === 'oct') v.oct = { shift: mid.p.shift ?? 1, both: (mid.p.both ?? 1) === 1 }
@@ -263,6 +274,7 @@ export function fxValues(l: Layer): FxValues {
       v.cutoff = snd.p.cutoff ?? 64
       v.reso = snd.p.reso ?? 64
     }
+    if (snd.p.odOn) v.od = { drive: snd.p.drive ?? 45, tone: snd.p.tone ?? 80, level: snd.p.level ?? 64 }
     if (snd.p.envOn) {
       v.attack = snd.p.attack ?? 64
       v.release = snd.p.release ?? 64

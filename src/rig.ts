@@ -97,7 +97,7 @@ class Rig {
     engine.cc(91, f.reverb, ch)
     engine.cc(93, f.chorus, ch)
     engine.cc(94, f.delay, ch)
-    engine.setChannelFx(ch, sndOf(l), l.vol / 127)
+    engine.setChannelFx(ch, { ...sndOf(l), od: f.od }, l.vol / 127)
     if (sndOf(l).set.blockSustain) engine.cc(64, 0, ch)
   }
 

@@ -2,7 +2,8 @@
 export type CompCfg = { on: boolean; inGain: number; attack: number; release: number; ratio: number; threshold: number; mix: number; outGain: number }
 export type EqCfg = { on: boolean; bands: number[] }
 export type SetCfg = { blockSustain: boolean; transpose: number; voices: number; volRange: number; sampler: number; pan: number }
-export type SndCfg = { comp: CompCfg; eq: EqCfg; set: SetCfg }
+export type OdCfg = { drive: number; tone: number; level: number }
+export type SndCfg = { comp: CompCfg; eq: EqCfg; set: SetCfg; od?: OdCfg | null }
 export type SndPatch = { comp?: Partial<CompCfg>; eq?: Partial<EqCfg>; set?: Partial<SetCfg> }
 
 export const EQ_FREQS = [60, 150, 400, 1000, 2400, 6000, 10000, 16000]
@@ -41,7 +42,20 @@ export const SND_PRESETS: { name: string; snd: SndPatch }[] = [
 ]
 
 /** Sem nada alterado: o canal vai direto para a saída, sem gastar processamento. */
-export const isNeutral = (c: SndCfg) => !c.comp.on && !c.eq.on && c.set.pan === 0 && c.set.sampler === 0 && c.set.volRange === 0
+export const isNeutral = (c: SndCfg) => !c.od && !c.comp.on && !c.eq.on && c.set.pan === 0 && c.set.sampler === 0 && c.set.volRange === 0
+
+/** Curva de válvula: saturação suave com leve assimetria (harmônicos pares e ímpares, som de órgão/amp). */
+function driveCurve(k: number): Float32Array<ArrayBuffer> {
+  const n = 2048
+  const out = new Float32Array(new ArrayBuffer(n * 4))
+  const bias = 0.12
+  const norm = Math.tanh(k * (1 + bias))
+  for (let i = 0; i < n; i++) {
+    const x = (i / (n - 1)) * 2 - 1
+    out[i] = Math.tanh(k * (x + bias * Math.abs(x))) / norm
+  }
+  return out
+}
 
 const db = (x: number) => Math.pow(10, x / 20)
 
@@ -50,6 +64,11 @@ export class ChanFx {
   readonly input: GainNode
   private ctx: AudioContext
   private sampler: GainNode
+  private clean: GainNode
+  private odIn: GainNode
+  private shaper: WaveShaperNode
+  private tone: BiquadFilterNode
+  private odOut: GainNode
   private pre: GainNode
   private dry: GainNode
   private wet: GainNode
@@ -63,6 +82,15 @@ export class ChanFx {
     const g = () => ctx.createGain()
     this.input = g()
     this.sampler = g()
+    this.clean = g()
+    this.odIn = g()
+    this.odOut = g()
+    this.odOut.gain.value = 0
+    this.shaper = ctx.createWaveShaper()
+    this.shaper.oversample = '4x'
+    this.tone = ctx.createBiquadFilter()
+    this.tone.type = 'lowpass'
+    this.tone.Q.value = 0.7
     this.pre = g()
     this.dry = g()
     this.wet = g()
@@ -71,7 +99,13 @@ export class ChanFx {
     this.comp = ctx.createDynamicsCompressor()
     this.comp.knee.value = 6
     this.input.connect(this.sampler)
-    this.sampler.connect(this.pre)
+    this.sampler.connect(this.clean)
+    this.clean.connect(this.pre)
+    this.sampler.connect(this.odIn)
+    this.odIn.connect(this.shaper)
+    this.shaper.connect(this.tone)
+    this.tone.connect(this.odOut)
+    this.odOut.connect(this.pre)
     this.pre.connect(this.dry)
     this.pre.connect(this.comp)
     this.comp.connect(this.wet)
@@ -95,6 +129,7 @@ export class ChanFx {
     prev.connect(this.panner)
     this.panner.connect(dest)
   }
+  private curveFor = -1
   dispose() {
     try { this.input.disconnect(); this.panner.disconnect() } catch { /* */ }
   }
@@ -104,6 +139,21 @@ export class ChanFx {
     const sm = (p: AudioParam, v: number) => p.setTargetAtTime(v, t, 0.015)
     const k = c.comp
     sm(this.sampler.gain, db(c.set.sampler))
+    const od = c.od
+    if (od) {
+      const pre = Math.pow(10, (od.drive / 127) * 1.7) // 1× a 50×
+      if (this.curveFor !== Math.round(pre * 10)) {
+        this.curveFor = Math.round(pre * 10)
+        this.shaper.curve = driveCurve(pre)
+      }
+      sm(this.odIn.gain, 1)
+      this.tone.frequency.setTargetAtTime(1200 * Math.pow(10, (od.tone / 127) * 1.0), t, 0.015)
+      sm(this.odOut.gain, Math.max(0.3, 0.83 / Math.pow(pre, 0.45)) * db(((od.level - 64) / 64) * 12))
+      sm(this.clean.gain, 0)
+    } else {
+      sm(this.odOut.gain, 0)
+      sm(this.clean.gain, 1)
+    }
     sm(this.pre.gain, k.on ? db(k.inGain) : 1)
     sm(this.post.gain, k.on ? db(k.outGain) : 1)
     const mix = k.on ? k.mix / 100 : 0

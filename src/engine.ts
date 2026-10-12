@@ -176,7 +176,7 @@ export class Engine {
 
   async selfTest() {
     const out: Record<string, number> = {}
-    for (const ch of [5, 0, 1, 15]) {
+    for (const ch of [5]) {
       this.program(0, ch)
       this.cc(7, 127, ch)
       this.cc(11, 127, ch)
@@ -222,6 +222,15 @@ export class Engine {
       let m = 0
       for (let i = 0; i < 8; i++) { await new Promise((r) => setTimeout(r, 60)); m = Math.max(m, this.peak()) }
       gt[`g${g}`] = Math.round(m * 1000) / 1000
+      this.noteOff(60, 13)
+      await new Promise((r) => setTimeout(r, 1500))
+    }
+    for (const d of [0, 127]) {
+      this.setChannelFx(13, { ...base, comp: { ...base.comp, on: false }, od: { drive: d, tone: 127, level: 64 } }, 1)
+      this.noteOn(60, 40, 13)
+      let m = 0
+      for (let i = 0; i < 8; i++) { await new Promise((r) => setTimeout(r, 60)); m = Math.max(m, this.peak()) }
+      gt[`od${d}`] = Math.round(m * 1000) / 1000
       this.noteOff(60, 13)
       await new Promise((r) => setTimeout(r, 1500))
     }
