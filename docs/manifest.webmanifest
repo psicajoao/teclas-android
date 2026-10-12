@@ -1,6 +1,6 @@
 {
-  "name": "Teclas Android",
-  "short_name": "Teclas",
+  "name": "Palco Keys",
+  "short_name": "Palco Keys",
   "description": "Teclado MIDI ao vivo com timbres, seções, pad e metrônomo.",
   "start_url": "./",
   "scope": "./",

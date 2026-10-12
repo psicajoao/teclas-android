@@ -1128,7 +1128,7 @@ export default function App() {
       )}
       <header className="topbar">
         <h1>
-          Teclas <span>Android</span>
+          Palco <span>Keys</span>
         </h1>
         {ready && (
           <>
@@ -1225,6 +1225,11 @@ export default function App() {
 
       {!ready ? (
         <section className="start">
+          <img className="logo" src={import.meta.env.BASE_URL + 'icon-512.png'} alt="" width={168} height={168} />
+          <div className="brand">
+            Palco <span>Keys</span>
+          </div>
+          <p className="tag">Teclado ao vivo · timbres em camadas · pad</p>
           <button className="big" onClick={start} disabled={status === 'loading'}>
             {status === 'loading' ? (prog > 0 && prog < 1 ? `Baixando sons… ${Math.round(prog * 100)}%` : stage) : status === 'error' ? 'Tentar de novo' : 'Iniciar'}
           </button>
