@@ -1,5 +1,7 @@
 import { engine } from './engine'
 import { sndOf } from './chanfx'
+import { ext, extOf } from './extmidi'
+import type { ExtCfg } from './extmidi'
 import type { SndPatch } from './chanfx'
 import { TIMBRES } from './timbres'
 import { rotorValue, arpStep } from './signal'
@@ -9,7 +11,7 @@ import type { FxSlot, ArpCfg } from './fx'
 
 export type Zone = 'all' | 'left' | 'right'
 /** lo/hi: primeira e última nota (MIDI) em que a camada toca. Sem lo/hi vale `zone` (formato antigo). */
-export type Layer = { timbre: string | null; vol: number; zone: Zone; off?: boolean; pan?: number; reverb?: number; lo?: number; hi?: number; fx?: FxSlot[]; snd?: SndPatch }
+export type Layer = { timbre: string | null; vol: number; zone: Zone; off?: boolean; pan?: number; reverb?: number; lo?: number; hi?: number; fx?: FxSlot[]; snd?: SndPatch; ext?: Partial<ExtCfg> }
 export type Section = { name: string; layers: Layer[] }
 
 export const LAYER_COUNT = 10
@@ -23,7 +25,11 @@ const ALL_CH = [...POOL, DRUM_CH]
 
 const byId = (id: string | null) => (id ? (TIMBRES.find((t) => t.id === id) ?? null) : null)
 // Timbre efetivo de uma camada: nenhum quando a camada está desligada.
-const tim = (l: Layer) => (l.off ? null : byId(l.timbre))
+const tim = (l: Layer) => {
+  if (l.off) return null
+  const t = byId(l.timbre)
+  return t && !t.ext ? t : null
+}
 const clamp = (v: number) => Math.max(0, Math.min(127, Math.round(v)))
 
 /** Faixa de notas (primeira, última) em que a camada toca. */
@@ -179,6 +185,7 @@ class Rig {
       this.loadLayer(ch, layers[i])
     })
     this.syncDrums(layers)
+    this.extSync(layers)
     this.layers = layers.map((l) => ({ ...l }))
     this.assign = assign
     if (carry && oldChs.length) {
@@ -234,6 +241,7 @@ class Rig {
       }
     })
     this.syncDrums(layers)
+    this.extSync(layers)
   }
 
   setMaster(v: number) {
@@ -244,7 +252,24 @@ class Rig {
 
   noteOn(note: number, velocity: number) {
     const outs = new Map<string, { ch: number; n: number }>()
+    const extOuts: { ch: number; n: number }[] = []
     this.layers.forEach((l, i) => {
+      const ex = extOf(l)
+      if (ex.on && !l.off) {
+        // saída MIDI externa: notas (com transposição, acorde e oitava) para o canal escolhido
+        const [elo, ehi] = rangeOf(l, this.split)
+        if (note >= elo && note <= ehi) {
+          const fx = fxValues(l)
+          const b = Math.max(0, Math.min(127, note + this.transpose + this.trOf(l)))
+          let ns = fx.chord ? fx.chord.map((iv) => b + iv) : [b]
+          if (fx.oct) {
+            const up = ns.map((n) => n + 12 * fx.oct!.shift)
+            ns = fx.oct.both ? [...ns, ...up] : up
+          }
+          ns.filter((n) => n >= 0 && n <= 127).forEach((n) => extOuts.push({ ch: ex.ch, n }))
+        }
+        if (!ex.both) return
+      }
       const t = tim(l)
       if (!t) return
       const [lo, hi] = rangeOf(l, this.split)
@@ -268,12 +293,35 @@ class Rig {
       }
       notes.filter((n) => n >= 0 && n <= 127).forEach((n) => outs.set(`${ch}:${n}`, { ch, n }))
     })
+    this.extHeld.get(note)?.forEach((o) => ext.noteOff(o.ch, o.n))
+    extOuts.forEach((o) => ext.noteOn(o.ch, o.n, velocity))
+    if (extOuts.length) this.extHeld.set(note, extOuts)
+    else this.extHeld.delete(note)
     this.held.get(note)?.forEach((o) => engine.noteOff(o.n, o.ch))
     outs.forEach((o) => engine.noteOn(o.n, velocity, o.ch))
     this.held.set(note, [...outs.values()])
   }
 
+  /** Notas que estão soando na saída MIDI externa (tecla → canal/nota). */
+  private extHeld = new Map<number, { ch: number; n: number }[]>()
+  /** Canais MIDI externos em uso nas camadas atuais. */
+  private extChannels() {
+    return [...new Set(this.layers.filter((l) => extOf(l).on && !l.off).map((l) => extOf(l).ch))]
+  }
+  /** Volume e programa de cada camada com saída externa (a cada mudança de seção ou ajuste). */
+  private extSync(layers: Layer[]) {
+    for (const l of layers) {
+      const ex = extOf(l)
+      if (!ex.on) continue
+      const lv = l.off ? 0 : this.level(l)
+      ext.cc(ex.ch, 7, lv)
+      if (ex.prog != null) ext.program(ex.ch, ex.prog)
+    }
+  }
+
   noteOff(note: number) {
+    this.extHeld.get(note)?.forEach((o) => ext.noteOff(o.ch, o.n))
+    this.extHeld.delete(note)
     this.held.get(note)?.forEach((o) => engine.noteOff(o.n, o.ch))
     this.held.delete(note)
     for (const st of this.arps.values()) {
@@ -496,6 +544,7 @@ class Rig {
 
   mod = 0
   cc(controller: number, value: number) {
+    if (controller === 64 || controller === 1) this.extChannels().forEach((c) => ext.cc(c, controller, value))
     if (controller === 64) {
       if (this.rotorEligible()) {
         // só órgão: o pedal vira a chave do rotor (a cada apertada) e não sustenta
@@ -520,11 +569,13 @@ class Rig {
       if (controller === 64 && this.sustainBlocked(ch)) return
       engine.cc(controller, value, ch)
     })
+    if (controller !== 74 && controller !== 64 && controller !== 1) this.extChannels().forEach((c) => ext.cc(c, controller, value))
   }
 
   pitchBend(value: number) {
     this.bend = value
     ALL_CH.forEach((ch) => engine.pitchBend(value, ch))
+    this.extChannels().forEach((c) => ext.bend(c, value))
   }
 
   panic() {
@@ -535,6 +586,8 @@ class Rig {
     this.carried = []
     this.sustainDown = false
     ALL_CH.forEach((ch) => engine.cc(123, 0, ch))
+    this.extHeld.clear()
+    this.extChannels().forEach((c) => ext.allOff(c))
   }
 }
 

@@ -1,6 +1,10 @@
 import { useRef, useState } from 'react'
 import { Knob } from './App'
 import { sndOf, defaultSnd, SND_PRESETS, EQ_LABELS } from './chanfx'
+import { ext, extOf, isExtTimbre } from './extmidi'
+import { m1Name, setM1Name } from './timbres'
+import type { ExtCfg } from './extmidi'
+import { useValue } from './signal'
 import type { SndCfg, SndPatch } from './chanfx'
 
 const clone = <T,>(x: T): T => JSON.parse(JSON.stringify(x))
@@ -70,11 +74,18 @@ const Step = ({ v, lo, hi, onChange, fmt, label }: { v: number; lo: number; hi: 
   </div>
 )
 
-type Tab = 'comp' | 'eq' | 'set'
+type Tab = 'comp' | 'eq' | 'set' | 'ext'
 
-export function SoundSheet({ layer, chIndex, color, name, onSnd, onClose, onRemove }: { layer: { snd?: SndPatch }; chIndex: number; color: string; name: string; onSnd: (c: SndCfg) => void; onClose: () => void; onRemove: () => void }) {
+export function SoundSheet({ layer, chIndex, color, name, onSnd, onExt, onClose, onRemove }: { layer: { timbre?: string | null; snd?: SndPatch; ext?: Partial<ExtCfg> }; chIndex: number; color: string; name: string; onSnd: (c: SndCfg) => void; onExt: (e: ExtCfg) => void; onClose: () => void; onRemove: () => void }) {
   const cfg = sndOf(layer)
   const orig = useRef<SndCfg>(clone(cfg))
+  const x = extOf(layer)
+  const origExt = useRef<ExtCfg>(clone(x))
+  const ports = useValue(ext.ports)
+  const putExt = (p: Partial<ExtCfg>) => onExt({ ...x, ...p })
+  const isM1 = isExtTimbre(layer.timbre)
+  const m1n = isM1 && layer.timbre !== 'ex:cur' ? Number(layer.timbre!.slice(3)) : -1
+  const [m1text, setM1text] = useState(() => (m1n >= 0 ? m1Name(m1n) : ''))
   const [tab, setTab] = useState<Tab>('comp')
   const [presets, setPresets] = useState(false)
   const put = (patch: SndPatch) => onSnd(sndOf({ snd: { comp: { ...cfg.comp, ...patch.comp }, eq: { ...cfg.eq, ...patch.eq }, set: { ...cfg.set, ...patch.set } } }))
@@ -83,6 +94,7 @@ export function SoundSheet({ layer, chIndex, color, name, onSnd, onClose, onRemo
   const c = (p: Partial<typeof k>) => put({ comp: { ...p, on: true } })
   const discard = () => {
     onSnd(orig.current)
+    onExt(origExt.current)
     onClose()
   }
   const reset = () => {
@@ -95,7 +107,7 @@ export function SoundSheet({ layer, chIndex, color, name, onSnd, onClose, onRemo
         <header className="fxs-head">
           <button className="ghost danger" onClick={() => { onRemove(); onClose() }}>Remover som</button>
           <h3><i className="fxs-dot" /> Canal {chIndex + 1} · {name}</h3>
-          {tab !== 'set' && (
+          {tab !== 'set' && tab !== 'ext' && (
             <button className={'fxs-pow' + (on ? ' on' : '')} aria-pressed={on} onClick={() => put(tab === 'comp' ? { comp: { on: !k.on } } : { eq: { on: !cfg.eq.on } })}>
               <span>{on ? 'Efeito ligado' : 'Efeito desligado'}</span>
               <i />
@@ -111,6 +123,9 @@ export function SoundSheet({ layer, chIndex, color, name, onSnd, onClose, onRemo
           </button>
           <button role="tab" aria-selected={tab === 'set'} className={tab === 'set' ? 'on' : ''} onClick={() => setTab('set')}>
             <small>Som</small>Ajustes
+          </button>
+          <button role="tab" aria-selected={tab === 'ext'} className={tab === 'ext' ? 'on' : ''} onClick={() => setTab('ext')}>
+            <small>Saída</small>MIDI externo{x.on && <i className="dot" />}
           </button>
         </nav>
 
@@ -185,6 +200,58 @@ export function SoundSheet({ layer, chIndex, color, name, onSnd, onClose, onRemo
                   <option value="main">Principal (estéreo)</option>
                 </select>
               </label>
+            </div>
+          </div>
+        )}
+
+        {tab === 'ext' && (
+          <div className="sndbody set">
+            <div className="setrow">
+              <div>
+                <b>Enviar este canal ao MIDI externo</b>
+                <small>As notas tocam no KORG M1 (ou em outro programa ou módulo de som).</small>
+              </div>
+              <button className={'toggle' + (x.on ? ' on' : '')} aria-pressed={x.on} onClick={() => putExt({ on: !x.on })}>
+                {x.on ? 'Ligado' : 'Desligado'}
+              </button>
+            </div>
+            <div className="setrow">
+              <div>
+                <b>Porta de saída</b>
+                <small>{ports.length ? 'Para onde o MIDI vai (vale para todos os canais).' : 'Nenhuma porta encontrada. No Mac: abra "Configuração de Áudio e MIDI", Janela, Mostrar Estúdio MIDI, duplo clique em IAC Driver e marque "Dispositivo está online". Depois recarregue esta página.'}</small>
+              </div>
+              <select value={ext.portId} onChange={(e) => ext.setPort(e.target.value)} aria-label="Porta MIDI de saída" disabled={!ports.length}>
+                <option value="">Automática{ports.length ? ` (${ext.current()?.name ?? '–'})` : ''}</option>
+                {ports.map((p) => (
+                  <option key={p.id} value={p.id}>{p.name}</option>
+                ))}
+              </select>
+            </div>
+            <div className="setrow">
+              <div><b>Canal MIDI</b><small>No KORG M1, deixe a entrada MIDI em Omni ou no mesmo canal.</small></div>
+              <Step label="canal MIDI" v={x.ch} lo={1} hi={16} onChange={(n) => putExt({ ch: n })} />
+            </div>
+            {isM1 && m1n >= 0 && (
+              <div className="setrow">
+                <div><b>Nome deste som</b><small>Programa {m1n + 1} do M1. O nome aparece no canal e na lista de timbres.</small></div>
+                <input className="m1name" value={m1text} onChange={(e) => { setM1text(e.target.value); setM1Name(m1n, e.target.value) }} placeholder={`Programa ${m1n + 1}`} aria-label="Nome do som" />
+              </div>
+            )}
+            {!isM1 && (
+            <div className="setrow">
+              <div><b>Programa (patch) ao entrar</b><small>Troca o programa do M1 quando esta seção abre. "—" = não mexe.</small></div>
+              <Step label="programa" v={x.prog ?? -1} lo={-1} hi={127} fmt={(n) => (n < 0 ? '—' : String(n + 1))} onChange={(n) => putExt({ prog: n < 0 ? null : n })} />
+            </div>
+            )}
+            <div className="setrow">
+              <div><b>Tocar também o som do Palco Keys</b><small>Dobra o som: o do app e o externo ao mesmo tempo.</small></div>
+              <button className={'toggle' + (x.both ? ' on' : '')} aria-pressed={x.both} onClick={() => putExt({ both: !x.both })}>
+                {x.both ? 'Sim' : 'Não'}
+              </button>
+            </div>
+            <div className="setrow">
+              <div><b>Testar a ligação</b><small>Toca um Dó central no canal {x.ch} por meio segundo.</small></div>
+              <button className="ghost" onClick={() => ext.test(x.ch)}>Tocar Dó</button>
             </div>
           </div>
         )}
