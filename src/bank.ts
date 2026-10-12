@@ -110,6 +110,10 @@ export async function removeBank(slot: number) {
   saveList(listBanks().filter((b) => b.slot !== slot))
 }
 
+import { createValue } from './signal'
+/** Texto de andamento do carregamento dos SoundFonts (vazio = nada carregando). */
+export const customStatus = createValue('')
+
 /** Preenchido pelo engine na partida. */
 export const bankInfo = { failed: [] as string[] }
 

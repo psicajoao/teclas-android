@@ -8,6 +8,7 @@ import { bendValue, modValue, beatValue, rotorValue, useValue } from './signal'
 import { parseMidi, noteName, DRUM_NAMES } from './midi'
 import { addBanks, removeBank, getHidden, setHidden, slotOf, listBanks, MAX_BANKS, bankInfo } from './bank'
 import type { Timbre } from './timbres'
+import { customStatus } from './bank'
 import { TIMBRES, GROUPS, FAVORITES, CUSTOM_GROUP, customVersion } from './timbres'
 import { Drawer, SettingsPanel, LearnPanel } from './panels'
 import { waitingValue, lastMsgValue, setBinding, findAction, learnOpen } from './learn'
@@ -702,6 +703,7 @@ export default function App() {
     [onMidi],
   )
 
+  const sfStatus = useValue(customStatus)
   const [prog, setProg] = useState(0)
   const [stage, setStage] = useState('Carregando sons…')
   const start = async () => {
@@ -1078,6 +1080,7 @@ export default function App() {
           </div>
         </div>
       )}
+      {ready && sfStatus && <div className="sfchip">{sfStatus}</div>}
       {secMenu != null && song.sections[secMenu] && (
         <div className="overlay center" onClick={() => setSecMenu(null)}>
           <div className="secmenu" role="dialog" aria-label="Opções da seção" onClick={(e) => e.stopPropagation()}>

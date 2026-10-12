@@ -1,5 +1,5 @@
 import { WorkletSynthesizer } from 'spessasynth_lib'
-import { listBanks, getBankData, ensureMigrated, bankInfo, BANK_STEP } from './bank'
+import { listBanks, getBankData, ensureMigrated, bankInfo, BANK_STEP, customStatus } from './bank'
 import { registerCustom } from './timbres'
 import type { BankMeta } from './bank'
 
@@ -84,6 +84,7 @@ export class Engine {
   private customLoading: Promise<void> | null = null
   /** SoundFonts do usuário: carregados em segundo plano depois que o app já está tocando. */
   loadCustom(): Promise<void> {
+    try { if (localStorage.getItem('teclas-android.safe') === '1') return Promise.resolve() } catch { /* */ }
     if (!this.customLoading) this.customLoading = this.initCustom().catch(() => {})
     return this.customLoading
   }
@@ -95,20 +96,26 @@ export class Engine {
     const key = (p: { bankMSB: number; bankLSB: number; program: number; isDrum: boolean }) => `${p.bankMSB}.${p.bankLSB}.${p.program}.${p.isDrum}`
     const known = new Set(synth.presetList.map(key))
     const found: { bank: BankMeta; patches: typeof synth.presetList }[] = []
-    for (const meta of listBanks()) {
+    const metas = listBanks()
+    let n = 0
+    for (const meta of metas) {
+      n++
+      customStatus.set(`Carregando SoundFont ${n}/${metas.length}: ${meta.name.replace(/\.sf[23]$/i, '')}…`)
       try {
         const data = await getBankData(meta.slot)
         if (!data) throw new Error('vazio')
         const before = synth.presetList.length
-        await synth.soundBankManager.addSoundBank(data, `bk${meta.slot}`, meta.slot * BANK_STEP)
+        await Promise.race([synth.soundBankManager.addSoundBank(data, `bk${meta.slot}`, meta.slot * BANK_STEP), new Promise((_, rej) => setTimeout(() => rej(new Error('demorou demais')), 120000))])
         for (let i = 0; i < 25 && synth.presetList.length === before; i++) await new Promise((r) => setTimeout(r, 60))
         const fresh = synth.presetList.filter((p) => !known.has(key(p)))
         fresh.forEach((p) => known.add(key(p)))
         found.push({ bank: meta, patches: fresh })
+        registerCustom(found)
       } catch {
         bankInfo.failed.push(meta.name)
       }
     }
+    customStatus.set('')
     registerCustom(found)
   }
 

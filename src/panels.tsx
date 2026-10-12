@@ -3,6 +3,36 @@ import { engine } from './engine'
 import { useValue } from './signal'
 import { bindingsValue, waitingValue, lastMsgValue, setBinding, clearAll, describeBinding, learnOpen } from './learn'
 import { midiConf, setMidiConf } from './midiconf'
+import { listBanks, bankInfo } from './bank'
+
+function Diag() {
+  const [, tick] = useState(0)
+  const safe = (() => { try { return localStorage.getItem('teclas-android.safe') === '1' } catch { return false } })()
+  const banks = listBanks()
+  const test = async () => {
+    try { await engine.ctx?.resume() } catch { /* */ }
+    engine.noteOn(60, 100, 0)
+    setTimeout(() => engine.noteOff(60, 0), 700)
+    tick((n) => n + 1)
+  }
+  return (
+    <div className="set-card">
+      <h3>Diagnóstico do som</h3>
+      <dl>
+        <dt>Estado do áudio</dt>
+        <dd>{engine.ctx?.state ?? 'desligado'}</dd>
+        <dt>SoundFonts guardados</dt>
+        <dd>{banks.length ? banks.map((b) => `${b.name} (${Math.round(b.size / 1048576)} MB)`).join(', ') : 'nenhum'}</dd>
+        {bankInfo.failed.length > 0 && (<><dt>Falharam ao carregar</dt><dd>{bankInfo.failed.join(', ')}</dd></>)}
+      </dl>
+      <button className="ghost" onClick={test}>Acordar o áudio e tocar um Dó</button>
+      <label className="chall" style={{ marginTop: 10 }}>
+        <input type="checkbox" checked={safe} onChange={(e) => { try { localStorage.setItem('teclas-android.safe', e.target.checked ? '1' : '0') } catch { /* */ } tick((n) => n + 1) }} />
+        Modo seguro: não carregar meus SoundFonts (vale na próxima abertura)
+      </label>
+    </div>
+  )
+}
 
 /* ---------------------------------------------------------------- gaveta (☰) */
 export function Drawer({ onClose, onLearn, onSettings }: { onClose: () => void; onLearn: () => void; onSettings: () => void }) {
@@ -130,6 +160,7 @@ function AudioTab({ latency }: { latency: { handler: number; output: number } | 
         {err && <p className="set-note warn">{err}</p>}
         <p className="set-note">Dica: fones ou caixas com cabo e interfaces USB têm o menor atraso.</p>
       </div>
+      <Diag />
     </div>
   )
 }
