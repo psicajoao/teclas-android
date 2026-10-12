@@ -365,6 +365,7 @@ function Picker({ onPick, onClose, padMode }: { onPick: (id: string | null) => v
   const [edit, setEdit] = useState(false)
   const [hidden, setHid] = useState(getHidden)
   const [busy, setBusy] = useState(false)
+  const [up, setUp] = useState<{ d: number; t: number; name: string } | null>(null)
   const [msg, setMsg] = useState('')
   const isCustom = group === CUSTOM_GROUP
   const shown = useMemo(() => {
@@ -385,13 +386,16 @@ function Picker({ onPick, onClose, padMode }: { onPick: (id: string | null) => v
     const ok = Array.from(files ?? []).filter((f) => /\.sf[23]$/i.test(f.name))
     if (!ok.length) return setMsg('Escolha arquivos .sf2 ou .sf3.')
     setBusy(true)
+    setUp({ d: 0, t: ok.length, name: ok[0].name })
     try {
-      const n = await addBanks(ok)
+      const n = await addBanks(ok, (d, t, name) => setUp({ d, t, name }))
+      setUp(null)
       reload(`${n} SoundFont(s) guardado(s). Recarregando…`)
     } catch (e) {
       const q = e instanceof DOMException && e.name === 'QuotaExceededError'
       setMsg(q ? 'Sem espaço para guardar este arquivo. Abra pelo ícone da tela de início (tem mais espaço que o Safari) ou apague SoundFonts antigos.' : 'Não consegui guardar o arquivo: ' + (e instanceof Error ? e.message : String(e)))
       setBusy(false)
+      setUp(null)
     }
   }
   const removeSound = async (t: Timbre) => {
@@ -461,6 +465,16 @@ function Picker({ onPick, onClose, padMode }: { onPick: (id: string | null) => v
               </button>
             )}
           </p>
+        )}
+        {up && (
+          <div className="upbox" role="status" aria-live="polite">
+            <b>
+              Guardando {Math.min(up.d + 1, up.t)} de {up.t}…
+            </b>
+            <span>{up.name}</span>
+            <progress max={up.t} value={up.d} />
+            <small>Pode demorar com arquivos grandes. Não feche esta tela.</small>
+          </div>
         )}
         {msg && <p className="pick-hint">{msg}</p>}
         {isCustom && bankInfo.failed.length > 0 && (() => {

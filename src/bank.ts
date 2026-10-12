@@ -79,11 +79,13 @@ export async function ensureMigrated() {
 }
 
 /** Guarda os arquivos; devolve quantos foram adicionados. */
-export async function addBanks(files: File[]): Promise<number> {
+export async function addBanks(files: File[], onStep?: (done: number, total: number, name: string) => void): Promise<number> {
   const list = listBanks()
   const db = await open()
   let n = 0
   for (const f of files) {
+    onStep?.(n, files.length, f.name)
+    await new Promise((r) => setTimeout(r, 30)) // deixa a tela atualizar antes de cada arquivo grande
     const slot = Array.from({ length: MAX_BANKS }, (_, i) => i + 1).find((s) => !list.some((b) => b.slot === s))
     if (!slot) break
     try { await navigator.storage?.persist?.() } catch { /* */ }
@@ -98,6 +100,7 @@ export async function addBanks(files: File[]): Promise<number> {
     list.push({ slot, name: f.name, size: f.size })
     saveList(list)
     n++
+    onStep?.(n, files.length, f.name)
   }
   return n
 }
