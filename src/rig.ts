@@ -242,7 +242,12 @@ class Rig {
     pad.setMaster(v)
   }
 
+  /** Gancho do gravador: tipo 1 toca, 0 solta, 2 pedal. */
+  onInput: ((type: 0 | 1 | 2, a: number, b: number) => void) | null = null
+  muteHook = false
+
   noteOn(note: number, velocity: number) {
+    if (!this.muteHook) this.onInput?.(1, note, velocity)
     const outs = new Map<string, { ch: number; n: number }>()
     this.layers.forEach((l, i) => {
       const t = tim(l)
@@ -274,6 +279,7 @@ class Rig {
   }
 
   noteOff(note: number) {
+    if (!this.muteHook) this.onInput?.(0, note, 0)
     this.held.get(note)?.forEach((o) => engine.noteOff(o.n, o.ch))
     this.held.delete(note)
     for (const st of this.arps.values()) {
@@ -497,6 +503,7 @@ class Rig {
   mod = 0
   cc(controller: number, value: number) {
     if (controller === 64) {
+      if (!this.muteHook) this.onInput?.(2, value, 0)
       if (this.rotorEligible()) {
         // só órgão: o pedal vira a chave do rotor (a cada apertada) e não sustenta
         if (value >= 64 && !this.sustainDown) this.rotorToggle()

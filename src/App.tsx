@@ -22,6 +22,7 @@ import { roleOf, connectedIds } from './midiconf'
 import { load, save, newSong, loadPad, savePad, uid } from './store'
 import type { Song, Setlist } from './store'
 import { SetlistPage } from './setlists'
+import { looper } from './looper'
 import './index.css'
 
 type Status = 'idle' | 'loading' | 'ready' | 'error'
@@ -656,7 +657,15 @@ export default function App() {
     const el = stripsRef.current
     if (el) setPage(Math.round(el.scrollLeft / (el.clientWidth * 0.98)))
   }
+  const [, setLoopTick] = useState(0)
+  looper.onState = () => setLoopTick((n) => n + 1)
+  looper.onDone = (tr) => updateSong((s) => ({ ...s, loop: tr }))
   useEffect(() => {
+    looper.halt()
+  }, [songIdx])
+  useEffect(() => {
+    looper.bpm = bpm
+    looper.beats = cfg.beats
     metro.bpm = bpm
     rig.bpm = bpm
     metro.beats = cfg.beats
@@ -874,6 +883,25 @@ export default function App() {
     const l = setlists.find((x) => x.id === id)
     const v = l ? l.ids.map((sid) => songs.findIndex((x) => x.id === sid)).filter((i) => i >= 0) : songs.map((_, i) => i)
     if (v.length && !v.includes(songIdx)) changeSong(v[0])
+  }
+
+  const recClick = () => {
+    if (!ready) return
+    if (looper.state === 'rec' || looper.state === 'count') { looper.stop(); return }
+    if (!metro.running) { metro.start(); setMetroOn(true) }
+    looper.record()
+  }
+  const loopPlay = () => {
+    if (!ready) return
+    if (looper.state === 'play') looper.stopPlay()
+    else if (song.loop) {
+      if (!metro.running) { metro.start(); setMetroOn(true) }
+      looper.play(song.loop)
+    }
+  }
+  const loopClear = () => {
+    looper.halt()
+    updateSong((s) => ({ ...s, loop: null }))
   }
 
   const toggleMetro = () => {
@@ -1321,6 +1349,17 @@ export default function App() {
                 </svg>
                 {metroOn ? <BeatDots beats={cfg.beats} /> : <span>Metrônomo</span>}
               </button>
+              <div className="seg3 inrow looper" role="group" aria-label="Gravador de uma pista">
+                <button className={looper.state === 'rec' || looper.state === 'count' ? 'on' : ''} onClick={recClick} title="Gravar o que você toca, com contagem de um compasso no metrônomo">
+                  {looper.state === 'count' ? '● Contagem…' : looper.state === 'rec' ? '■ Gravando' : '● Gravar'}
+                </button>
+                <button className={looper.state === 'play' ? 'on' : ''} disabled={!song.loop} onClick={loopPlay} title="Tocar a pista em loop com o timbre atual">
+                  {looper.state === 'play' ? '■ Parar' : '▶ Tocar'}
+                </button>
+                <button disabled={!song.loop} onClick={loopClear} title="Apagar a pista gravada">
+                  ✕ {song.loop ? `${song.loop.bars} comp.` : 'Pista'}
+                </button>
+              </div>
               <div className="seg3 inrow" title="De que lado sai o clique do metrônomo: E = esquerdo, C = centro, D = direito" role="radiogroup" aria-label="Lado de saída do clique">
                 {([[-1, 'E', 'Só no lado esquerdo'], [0, 'C', 'Nos dois lados'], [1, 'D', 'Só no lado direito']] as const).map(([v, t, tip]) => (
                   <button key={v} role="radio" aria-checked={(cfg.clickPan ?? 0) === v} title={tip} aria-label={tip} className={(cfg.clickPan ?? 0) === v ? 'on' : ''} onClick={() => setCfg({ ...cfg, clickPan: v })}>
