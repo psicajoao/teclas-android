@@ -610,7 +610,8 @@ export default function App() {
     rig.bpm = bpm
     metro.beats = cfg.beats
     metro.volume = cfg.click / 127
-  }, [bpm, cfg.beats, cfg.click])
+    metro.pan = cfg.clickPan ?? 0
+  }, [bpm, cfg.beats, cfg.click, cfg.clickPan])
   useEffect(() => {
     rig.transpose = transpose
   }, [transpose])
@@ -1250,6 +1251,13 @@ export default function App() {
                 </svg>
                 {metroOn ? <BeatDots beats={cfg.beats} /> : <span>Metrônomo</span>}
               </button>
+              <div className="seg3 inrow" title="De que lado sai o clique do metrônomo: E = esquerdo, C = centro, D = direito" role="radiogroup" aria-label="Lado de saída do clique">
+                {([[-1, 'E', 'Só no lado esquerdo'], [0, 'C', 'Nos dois lados'], [1, 'D', 'Só no lado direito']] as const).map(([v, t, tip]) => (
+                  <button key={v} role="radio" aria-checked={(cfg.clickPan ?? 0) === v} title={tip} aria-label={tip} className={(cfg.clickPan ?? 0) === v ? 'on' : ''} onClick={() => setCfg({ ...cfg, clickPan: v })}>
+                    {t}
+                  </button>
+                ))}
+              </div>
             </div>
             <div className="ctl">
               <label>Compasso</label>

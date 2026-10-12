@@ -5,7 +5,7 @@ export type Song = { id?: string; name: string; fade: number; split: number; sec
 /** Lista de músicas para um culto/evento: guarda só as ordens das músicas da biblioteca. */
 export type Setlist = { id: string; name: string; date?: string; ids: string[] }
 export const uid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4)
-export type PadConfig = { timbre: string; vol: number; fade: number; beats: number; click: number; bright: number; shimmer: number }
+export type PadConfig = { timbre: string; vol: number; fade: number; beats: number; click: number; clickPan?: number; bright: number; shimmer: number }
 
 const KEY = 'teclas-android.v1'
 const L = (timbre: string | null, vol = 100, zone: Layer['zone'] = 'all'): Layer => ({ timbre, vol, zone })

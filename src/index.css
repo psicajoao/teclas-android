@@ -945,3 +945,11 @@ h1 span { color: var(--cyan); text-shadow: 0 0 16px #00e5ff77; }
 .slp-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; align-items: start; }
 .slp-col { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
 .slp-pick { grid-template-columns: 1fr; }
+
+/* ---- Lado de saída do clique (E / C / D) ---- */
+.seg3 { display: inline-flex; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; background: #0a0612cc; }
+.seg3 button { min-width: 38px; min-height: 40px; padding: 0 10px; background: transparent; border: 0; border-right: 1px solid var(--line); color: var(--muted); font-weight: 800; }
+.seg3 button:last-child { border-right: 0; }
+.seg3 button.on { background: var(--cyan); color: #000; }
+.fit .seg3 button { min-height: 34px; min-width: 32px; padding: 0 8px; }
+.seg3.inrow { flex: none; align-self: center; }

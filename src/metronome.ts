@@ -5,6 +5,8 @@ class Metronome {
   bpm = 120
   beats = 4
   volume = 0.7
+  /** Lado do clique: -1 = só esquerdo, 0 = centro, 1 = só direito (fone de ouvido sem mandar o clique para o PA). */
+  pan = 0
   running = false
   onBeat: ((beat: number) => void) | null = null
   private next = 0
@@ -58,7 +60,12 @@ class Metronome {
     g.gain.setValueAtTime(peak, t)
     g.gain.exponentialRampToValueAtTime(0.0008, t + 0.06)
     osc.connect(g)
-    g.connect(ctx.destination)
+    if (this.pan !== 0 && ctx.createStereoPanner) {
+      const p = ctx.createStereoPanner()
+      p.pan.value = this.pan
+      g.connect(p)
+      p.connect(ctx.destination)
+    } else g.connect(ctx.destination)
     osc.start(t)
     osc.stop(t + 0.07)
   }
