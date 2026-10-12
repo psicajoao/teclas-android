@@ -34,6 +34,53 @@ function Diag() {
   )
 }
 
+function Backup() {
+  const [msg, setMsg] = useState('')
+  const exportar = () => {
+    const dados: Record<string, string> = {}
+    try {
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i)
+        if (k && k.startsWith('teclas-android.') && k !== 'teclas-android.safe') dados[k] = localStorage.getItem(k) ?? ''
+      }
+    } catch { /* */ }
+    const blob = new Blob([JSON.stringify({ app: 'palco-keys', versao: 1, data: new Date().toISOString(), dados })], { type: 'application/json' })
+    const a = document.createElement('a')
+    a.href = URL.createObjectURL(blob)
+    a.download = `palco-keys-backup-${new Date().toISOString().slice(0, 10)}.json`
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+    setTimeout(() => URL.revokeObjectURL(a.href), 5000)
+    setMsg('Backup salvo na pasta de Downloads.')
+  }
+  const importar = async (f: File | undefined) => {
+    if (!f) return
+    try {
+      const j = JSON.parse(await f.text())
+      if (j.app !== 'palco-keys' || !j.dados) throw new Error('arquivo inválido')
+      if (!window.confirm('Isto substitui as músicas, setlists e ajustes deste aparelho pelos do backup. Continuar?')) return
+      for (const [k, v] of Object.entries(j.dados as Record<string, string>)) if (k.startsWith('teclas-android.')) localStorage.setItem(k, v)
+      setMsg('Backup restaurado. Reiniciando…')
+      setTimeout(() => location.reload(), 600)
+    } catch {
+      setMsg('Esse arquivo não é um backup do Palco Keys.')
+    }
+  }
+  return (
+    <div className="set-card">
+      <h3>Backup</h3>
+      <p style={{ opacity: 0.8, fontSize: 13, margin: '0 0 8px' }}>Leve suas músicas, setlists, pad, ajustes e controles MIDI para outro aparelho. Os SoundFonts (.sf2) não vão no arquivo: coloque-os de novo no outro aparelho.</p>
+      <button className="ghost" onClick={exportar}>Exportar backup</button>{' '}
+      <label className="ghost" style={{ display: 'inline-block', cursor: 'pointer', padding: '8px 12px' }}>
+        Importar backup
+        <input type="file" accept=".json,application/json" style={{ display: 'none' }} onChange={(e) => { void importar(e.target.files?.[0]); e.target.value = '' }} />
+      </label>
+      {msg && <p style={{ marginTop: 8 }}>{msg}</p>}
+    </div>
+  )
+}
+
 /* ---------------------------------------------------------------- gaveta (☰) */
 export function Drawer({ onClose, onLearn, onSettings }: { onClose: () => void; onLearn: () => void; onSettings: () => void }) {
   useEffect(() => {
@@ -160,6 +207,7 @@ function AudioTab({ latency }: { latency: { handler: number; output: number } | 
         {err && <p className="set-note warn">{err}</p>}
         <p className="set-note">Dica: fones ou caixas com cabo e interfaces USB têm o menor atraso.</p>
       </div>
+      <Backup />
       <Diag />
     </div>
   )

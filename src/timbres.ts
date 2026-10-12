@@ -1,6 +1,6 @@
 import { createValue } from './signal'
 
-export type Timbre = { id: string; name: string; program: number; group: string; drum?: boolean; bank?: number; lsb?: number; src?: string; ext?: boolean }
+export type Timbre = { id: string; name: string; program: number; group: string; drum?: boolean; bank?: number; lsb?: number; src?: string }
 
 /** Muda quando o banco personalizado é registrado (para redesenhar o seletor). */
 export const customVersion = createValue(0)
@@ -41,44 +41,9 @@ const MELODIC: Timbre[] = FAMILIES.flatMap((f, fi) =>
   })),
 )
 
-/** Sons de um módulo externo (KORG M1 aberto no Mac): o Palco Keys manda notas e troca de programa por MIDI. */
-export const EXT_GROUP = 'KORG M1'
-const M1_KEY = 'teclas-android.m1names'
-function m1Names(): Record<string, string> {
-  try {
-    return JSON.parse(localStorage.getItem(M1_KEY) ?? '{}') ?? {}
-  } catch {
-    return {}
-  }
-}
-export const m1Name = (n: number) => m1Names()[String(n)] || `Programa ${n + 1}`
-export function setM1Name(n: number, name: string) {
-  const all = m1Names()
-  if (name.trim()) all[String(n)] = name.trim()
-  else delete all[String(n)]
-  try {
-    localStorage.setItem(M1_KEY, JSON.stringify(all))
-  } catch {
-    /* */
-  }
-}
-const EXT_TIMBRES: Timbre[] = [
-  { id: 'ex:cur', name: 'Som que está no M1', program: -1, group: EXT_GROUP, ext: true },
-  ...Array.from({ length: 100 }, (_, n) => ({
-    id: `ex:${n}`,
-    get name() {
-      return m1Name(n)
-    },
-    program: n,
-    group: EXT_GROUP,
-    ext: true,
-  })),
-]
-
 export const TIMBRES: Timbre[] = [
   ...MELODIC,
   ...DRUM_KITS.map(([program, name]) => ({ id: `drum${program}`, name, program, group: 'Bateria', drum: true })),
-  ...EXT_TIMBRES,
 ]
 
 type Patch = { name: string; program: number; bankMSB: number; bankLSB: number; isDrum: boolean }
@@ -100,7 +65,7 @@ export function registerCustom(banks: { bank: { slot: number; name: string }; pa
   customVersion.set(customVersion.get() + 1)
 }
 
-export const GROUPS = [...FAMILIES.map((f) => f.group), 'Bateria', EXT_GROUP]
+export const GROUPS = [...FAMILIES.map((f) => f.group), 'Bateria']
 
 // Timbres de louvor mais usados, para acesso rápido.
 export const FAVORITES = ['gm0', 'gm4', 'gm19', 'gm48', 'gm49', 'gm52', 'gm89', 'gm94']
