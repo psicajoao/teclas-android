@@ -75,6 +75,21 @@ export class Engine {
     } catch { /* */ }
   }
 
+  private kicks = 0
+  /** Botão "Som pausado": tenta religar; se o iPad continuar sem som depois de vários toques, reinicia o app (os dados ficam salvos). */
+  kick() {
+    const ctx = this.ctx
+    if (!ctx) return
+    try { (navigator as unknown as { audioSession?: { type: string } }).audioSession!.type = 'playback' } catch { /* */ }
+    if (this.kicks >= 1) void ctx.suspend().catch(() => {})
+    this.kicks++
+    this.unlock(ctx)
+    setTimeout(() => {
+      if (ctx.state === 'running') this.kicks = 0
+      else if (this.kicks >= 3) location.reload()
+    }, 700)
+  }
+
   /** Progresso do download do banco GM (0–1), para mostrar na tela inicial. */
   onProgress: ((p: number) => void) | null = null
   onStage: ((t: string) => void) | null = null

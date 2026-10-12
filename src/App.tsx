@@ -1248,7 +1248,7 @@ export default function App() {
         </div>
       )}
       {ready && !audioIsOn && (
-        <button className="sndoff" onClick={() => engine.unlock()}>
+        <button className="sndoff" onClick={() => engine.kick()}>
           🔇 Som pausado pelo iPad. Toque aqui para ligar
         </button>
       )}
