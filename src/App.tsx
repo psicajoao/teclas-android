@@ -1249,7 +1249,7 @@ export default function App() {
       )}
       {ready && !audioIsOn && (
         <button className="sndoff" onClick={() => engine.kick()}>
-          🔇 Som pausado pelo iPad. Toque aqui para ligar
+          🔇 Som pausado pelo iPad{engine.ctx ? ` (${engine.ctx.state})` : ''}. Toque aqui para ligar
         </button>
       )}
       {ready && sfStatus && <div className="sfchip">{sfStatus}</div>}
