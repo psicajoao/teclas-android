@@ -66,7 +66,9 @@ async function migrate() {
 export async function getBankData(slot: number): Promise<ArrayBuffer | null> {
   try {
     const db = await open()
-    return ((await req(db.transaction('lib').objectStore('lib').get(slot))) as ArrayBuffer) ?? null
+    const v = (await req(db.transaction('lib').objectStore('lib').get(slot))) as ArrayBuffer | Blob | undefined
+    if (!v) return null
+    return v instanceof Blob ? await v.arrayBuffer() : v
   } catch {
     return null
   }
@@ -84,12 +86,14 @@ export async function addBanks(files: File[]): Promise<number> {
   for (const f of files) {
     const slot = Array.from({ length: MAX_BANKS }, (_, i) => i + 1).find((s) => !list.some((b) => b.slot === s))
     if (!slot) break
-    const data = await f.arrayBuffer()
+    try { await navigator.storage?.persist?.() } catch { /* */ }
+    const data = new Blob([f], { type: 'application/octet-stream' })
     const tx = db.transaction('lib', 'readwrite')
     tx.objectStore('lib').put(data, slot)
     await new Promise<void>((res, rej) => {
       tx.oncomplete = () => res()
       tx.onerror = () => rej(tx.error)
+      tx.onabort = () => rej(tx.error)
     })
     list.push({ slot, name: f.name, size: f.size })
     saveList(list)

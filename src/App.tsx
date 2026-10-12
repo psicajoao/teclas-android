@@ -380,8 +380,9 @@ function Picker({ onPick, onClose, padMode }: { onPick: (id: string | null) => v
     try {
       const n = await addBanks(ok)
       reload(`${n} SoundFont(s) guardado(s). Recarregando…`)
-    } catch {
-      setMsg('Não consegui guardar (sem espaço no navegador?).')
+    } catch (e) {
+      const q = e instanceof DOMException && e.name === 'QuotaExceededError'
+      setMsg(q ? 'Sem espaço para guardar este arquivo. Abra pelo ícone da tela de início (tem mais espaço que o Safari) ou apague SoundFonts antigos.' : 'Não consegui guardar o arquivo: ' + (e instanceof Error ? e.message : String(e)))
       setBusy(false)
     }
   }
