@@ -14,7 +14,7 @@ self.addEventListener('fetch', (e) => {
       const hit = await c.match(r, { ignoreSearch: true })
       if (hit) return hit
       const res = await fetch(r)
-      if (res.ok) c.put(r, res.clone())
+      if (res.ok) e.waitUntil(c.put(r, res.clone()).catch(() => {}))
       return res
     }))
   } else {

@@ -668,11 +668,13 @@ export default function App() {
   )
 
   const [prog, setProg] = useState(0)
+  const [stage, setStage] = useState('Carregando sons…')
   const start = async () => {
     setStatus('loading')
     setError('')
     setProg(0)
     engine.onProgress = setProg
+    engine.onStage = setStage
     try {
       await engine.start()
       rig.master = volume
@@ -1106,7 +1108,7 @@ export default function App() {
       {!ready ? (
         <section className="start">
           <button className="big" onClick={start} disabled={status === 'loading'}>
-            {status === 'loading' ? (prog > 0 && prog < 1 ? `Baixando sons… ${Math.round(prog * 100)}%` : 'Carregando sons…') : status === 'error' ? 'Tentar de novo' : 'Iniciar'}
+            {status === 'loading' ? (prog > 0 && prog < 1 ? `Baixando sons… ${Math.round(prog * 100)}%` : stage) : status === 'error' ? 'Tentar de novo' : 'Iniciar'}
           </button>
           <p className="hint">Toque em Iniciar para ligar o áudio e conectar o teclado MIDI.</p>
           {error && <p className="error">{error}</p>}

@@ -28,9 +28,12 @@ export class Engine {
 
   /** Progresso do download do banco GM (0–1), para mostrar na tela inicial. */
   onProgress: ((p: number) => void) | null = null
+  onStage: ((t: string) => void) | null = null
 
   private async init() {
+    this.onStage?.('Ligando o áudio…')
     const ctx = new AudioContext({ latencyHint: 'interactive' })
+    void ctx.resume().catch(() => {})
     await ctx.audioWorklet.addModule(BASE + 'spessasynth_processor.min.js')
     const synth = new WorkletSynthesizer(ctx)
     const analyser = ctx.createAnalyser()
@@ -39,6 +42,7 @@ export class Engine {
     analyser.connect(ctx.destination)
     this.analyser = analyser
     {
+      this.onStage?.('Baixando sons…')
       const res = await fetch(BASE + 'sounds/GeneralUser-GS.sf2')
       if (!res.ok) throw new Error('Banco de sons GM não encontrado (public/sounds/GeneralUser-GS.sf2)')
       const total = Number(res.headers.get('content-length')) || 32319396
@@ -59,12 +63,13 @@ export class Engine {
         for (const c of chunks) { all.set(c, o); o += c.length }
         data = all.buffer
       } else data = await res.arrayBuffer()
+      this.onStage?.('Preparando sons…')
       await synth.soundBankManager.addSoundBank(data, 'gm')
     }
     await synth.isReady
     synth.setSystemParameter('reverbGain', 2.2)
     synth.setSystemParameter('chorusGain', 3)
-    await ctx.resume()
+    await Promise.race([ctx.resume(), new Promise((r) => setTimeout(r, 1500))])
     this.ctx = ctx
     this.synth = synth
     if (location.search.includes('selftest')) void this.selfTest()
