@@ -9,6 +9,9 @@ import { parseMidi, noteName, DRUM_NAMES } from './midi'
 import { addBanks, removeBank, getHidden, setHidden, slotOf, listBanks, MAX_BANKS, bankInfo } from './bank'
 import type { Timbre } from './timbres'
 import { customStatus } from './bank'
+import { FxSheet } from './fxpanel'
+import { slotsOf, fxDef } from './fx'
+import type { FxSlot } from './fx'
 import { audioOn } from './engine'
 import { TIMBRES, GROUPS, FAVORITES, CUSTOM_GROUP, customVersion } from './timbres'
 import { Drawer, SettingsPanel, LearnPanel } from './panels'
@@ -123,7 +126,7 @@ function HFader({ value, onChange, label, width = 220 }: { value: number; onChan
   )
 }
 
-function Knob({ value, onChange, label, reset, disabled, always }: { value: number; onChange: (v: number) => void; label: string; reset: number; disabled?: boolean; always?: boolean }) {
+export function Knob({ value, onChange, label, reset, disabled, always, fmt }: { value: number; onChange: (v: number) => void; label: string; reset: number; disabled?: boolean; always?: boolean; fmt?: (v: number) => string }) {
   const drag = useRef<{ y: number; v: number } | null>(null)
   const [active, setActive] = useState(false)
   const pct = Math.round((value / 127) * 100)
@@ -164,7 +167,7 @@ function Knob({ value, onChange, label, reset, disabled, always }: { value: numb
         }}
       />
       <span>{label}</span>
-      {(always || active) && <b className="kval">{pct}%</b>}
+      {(always || active) && <b className="kval">{fmt ? fmt(value) : `${pct}%`}</b>}
     </div>
   )
 }
@@ -587,6 +590,7 @@ export default function App() {
   }
   useEffect(() => {
     metro.bpm = bpm
+    rig.bpm = bpm
     metro.beats = cfg.beats
     metro.volume = cfg.click / 127
   }, [bpm, cfg.beats, cfg.click])
@@ -862,9 +866,15 @@ export default function App() {
     if (ready) rig.apply(rest[idx].sections[0].layers, 0)
   }
 
+  const [fxEdit, setFxEdit] = useState<{ layer: number; slot: number } | null>(null)
+  const setSlots = (li: number, fx: FxSlot[]) => editLayer(li, { fx })
+  const toggleFx = (li: number, si: number) => {
+    const sl = slotsOf(section.layers[li])
+    setSlots(li, sl.map((x, k) => (k === si ? { ...x, on: !x.on } : x)))
+  }
   const chDown = (e: React.PointerEvent, i: number) => {
     chFired.current = false
-    if ((e.target as HTMLElement).closest('.fader, .knobwrap, .power')) return
+    if ((e.target as HTMLElement).closest('.fader, .knobwrap, .power, .fxslot')) return
     chStart.current = { x: e.clientX, y: e.clientY }
     if (chTimer.current) clearTimeout(chTimer.current)
     chTimer.current = setTimeout(() => {
@@ -1050,6 +1060,16 @@ export default function App() {
 
   return (
     <div className={'app' + (ready ? ' fit' : '')}>
+      {fxEdit && section.layers[fxEdit.layer] && (
+        <FxSheet
+          layer={section.layers[fxEdit.layer]}
+          chIndex={fxEdit.layer}
+          slot={fxEdit.slot}
+          color={LCOLORS[fxEdit.layer]}
+          onSlots={(fx) => setSlots(fxEdit.layer, fx)}
+          onClose={() => setFxEdit(null)}
+        />
+      )}
       {chMenu != null && section.layers[chMenu] && (
         <div className="overlay center" onClick={() => setChMenu(null)}>
           <div className="secmenu" role="dialog" aria-label="Mover canal" onClick={(e) => e.stopPropagation()}>
@@ -1397,9 +1417,25 @@ export default function App() {
                       </div>
                       <div className="mix">
                         <Fader value={l.vol} disabled={!live} onChange={(v) => editLayer(i, { vol: v })} />
-                        <div className="knobs">
-                          <Knob label="Pan" value={l.pan ?? 64} reset={64} disabled={!live || !!t?.drum} onChange={(v) => editLayer(i, { pan: v })} />
-                          <Knob label="Reverb" value={l.reverb ?? 40} reset={40} disabled={!live || !!t?.drum} onChange={(v) => editLayer(i, { reverb: v })} />
+                        <div className="fxslots">
+                          {slotsOf(l).map((sl, si) => {
+                            const d = fxDef(sl.type)
+                            return (
+                              <div key={si} className={'fxslot' + (sl.type ? (sl.on ? ' on' : ' off') : ' empty')}>
+                                <button
+                                  className="fxpow"
+                                  disabled={!sl.type}
+                                  aria-pressed={sl.on}
+                                  aria-label={sl.on ? 'Desligar efeito' : 'Ligar efeito'}
+                                  onClick={() => toggleFx(i, si)}
+                                />
+                                <button className="fxname" onClick={() => setFxEdit({ layer: i, slot: si })}>
+                                  <small>{si === 0 ? 'MIDI' : `Áudio ${si}`}</small>
+                                  <b>{d ? (d.type === 'arp' ? 'Arpejo' : d.label) : 'Escolher'}</b>
+                                </button>
+                              </div>
+                            )
+                          })}
                         </div>
                       </div>
                       <div className="vv">{t ? l.vol : '–'}</div>

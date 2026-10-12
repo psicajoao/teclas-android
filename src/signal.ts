@@ -30,3 +30,5 @@ export const beatValue = createValue(-1) // batida atual do metrônomo (-1 = par
 
 /** Rotor do órgão (alto-falante Leslie): null = desligado (sem só-órgão), 'slow' ou 'fast'. */
 export const rotorValue = createValue<null | 'slow' | 'fast'>(null)
+
+export const arpStep = createValue(-1) // passo atual do arpejador (para a tela de edição)

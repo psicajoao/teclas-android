@@ -1,10 +1,12 @@
 import { engine } from './engine'
 import { TIMBRES } from './timbres'
-import { rotorValue } from './signal'
+import { rotorValue, arpStep } from './signal'
+import { fxValues, DIVS } from './fx'
+import type { FxSlot, ArpCfg } from './fx'
 
 export type Zone = 'all' | 'left' | 'right'
 /** lo/hi: primeira e última nota (MIDI) em que a camada toca. Sem lo/hi vale `zone` (formato antigo). */
-export type Layer = { timbre: string | null; vol: number; zone: Zone; off?: boolean; pan?: number; reverb?: number; lo?: number; hi?: number }
+export type Layer = { timbre: string | null; vol: number; zone: Zone; off?: boolean; pan?: number; reverb?: number; lo?: number; hi?: number; fx?: FxSlot[] }
 export type Section = { name: string; layers: Layer[] }
 
 export const LAYER_COUNT = 10
@@ -28,6 +30,8 @@ export function rangeOf(l: Layer, split = 60): [number, number] {
   if (l.zone === 'right') return [split, 127]
   return [0, 127]
 }
+
+type ArpState = { ch: number; notes: { n: number; v: number }[]; down: number; i: number; pos: number; next: number; sounding: { n: number; off: number }[] }
 
 class Rig {
   master = 100
@@ -66,7 +70,10 @@ class Rig {
       if (keep.length) this.held.set(note, keep)
       else this.held.delete(note)
     }
-    for (const ch of chs) engine.cc(123, 0, ch)
+    for (const ch of chs) {
+      this.arps.delete(ch)
+      engine.cc(123, 0, ch)
+    }
   }
 
   private used() {
@@ -77,10 +84,21 @@ class Rig {
     const t = this.melodic(l)
     if (!t) return
     engine.program(t.program, ch, t.bank ?? 0, t.lsb ?? 0)
-    engine.cc(74, Math.round(64 + (this.mod / 127) * 63), ch)
+    const f = fxValues(l)
+    engine.cc(74, this.cutoffOf(f.cutoff), ch)
+    engine.cc(71, f.reso, ch)
+    engine.cc(73, f.attack, ch)
+    engine.cc(72, f.release, ch)
     engine.cc(7, this.level(l), ch)
-    engine.cc(10, l.pan ?? 64, ch)
-    engine.cc(91, l.reverb ?? 40, ch)
+    engine.cc(10, f.pan, ch)
+    engine.cc(91, f.reverb, ch)
+    engine.cc(93, f.chorus, ch)
+    engine.cc(94, f.delay, ch)
+  }
+
+  /** Corte do filtro: o valor da camada, aberto pela roda de modulação em direção ao máximo. */
+  private cutoffOf(base: number) {
+    return clamp(base + (this.mod / 127) * (127 - base))
   }
 
   private syncDrums(layers: Layer[]) {
@@ -211,7 +229,7 @@ class Rig {
   }
 
   noteOn(note: number, velocity: number) {
-    const outs = new Map<number, { ch: number; n: number }>()
+    const outs = new Map<string, { ch: number; n: number }>()
     this.layers.forEach((l, i) => {
       const t = tim(l)
       if (!t) return
@@ -219,8 +237,22 @@ class Rig {
       if (note < lo || note > hi) return
       const ch = t.drum ? DRUM_CH : this.assign[i]
       if (ch == null) return
-      const n = t.drum ? note : Math.max(0, Math.min(127, note + this.transpose))
-      outs.set(ch, { ch, n })
+      if (t.drum) {
+        outs.set(`${ch}:${note}`, { ch, n: note })
+        return
+      }
+      const f = fxValues(l)
+      const base = Math.max(0, Math.min(127, note + this.transpose))
+      if (f.arp) {
+        this.arpPress(ch, base, velocity, f.arp)
+        return
+      }
+      let notes = f.chord ? f.chord.map((iv) => base + iv) : [base]
+      if (f.oct) {
+        const up = notes.map((n) => n + 12 * f.oct!.shift)
+        notes = f.oct.both ? [...notes, ...up] : up
+      }
+      notes.filter((n) => n >= 0 && n <= 127).forEach((n) => outs.set(`${ch}:${n}`, { ch, n }))
     })
     this.held.get(note)?.forEach((o) => engine.noteOff(o.n, o.ch))
     outs.forEach((o) => engine.noteOn(o.n, velocity, o.ch))
@@ -230,6 +262,137 @@ class Rig {
   noteOff(note: number) {
     this.held.get(note)?.forEach((o) => engine.noteOff(o.n, o.ch))
     this.held.delete(note)
+    const base = Math.max(0, Math.min(127, note + this.transpose))
+    for (const st of this.arps.values()) this.arpRelease(st, base)
+  }
+
+  /* ---- Arpejador (um por camada/canal) ---- */
+  bpm = 120
+  private arps = new Map<number, ArpState>()
+  private arpTimer: ReturnType<typeof setInterval> | null = null
+
+  private arpCfgOf(ch: number): ArpCfg | null {
+    const i = this.assign.indexOf(ch)
+    const l = i >= 0 ? this.layers[i] : undefined
+    return l && tim(l) ? fxValues(l).arp : null
+  }
+
+  private arpPress(ch: number, note: number, vel: number, cfg: ArpCfg) {
+    let st = this.arps.get(ch)
+    if (!st) {
+      st = { ch, notes: [], down: 0, i: 0, pos: 0, next: performance.now(), sounding: [] }
+      this.arps.set(ch, st)
+    }
+    if (cfg.latch && st.down === 0) st.notes = []
+    st.down++
+    st.notes = st.notes.filter((x) => x.n !== note)
+    st.notes.push({ n: note, v: vel })
+    if (st.notes.length === 1 && st.sounding.length === 0) {
+      st.i = 0
+      st.pos = 0
+      st.next = performance.now()
+    }
+    if (!this.arpTimer) this.arpTimer = setInterval(() => this.arpTick(), 6)
+  }
+
+  private arpRelease(st: ArpState, note: number) {
+    if (!st.notes.some((x) => x.n === note)) return
+    st.down = Math.max(0, st.down - 1)
+    const cfg = this.arpCfgOf(st.ch)
+    if (cfg?.latch || this.sustainDown) return
+    st.notes = st.notes.filter((x) => x.n !== note)
+  }
+
+  private arpStop(st: ArpState) {
+    st.sounding.forEach((s) => engine.noteOff(s.n, st.ch))
+    st.sounding = []
+    this.arps.delete(st.ch)
+  }
+
+  private arpTick() {
+    const now = performance.now()
+    for (const st of [...this.arps.values()]) {
+      const cfg = this.arpCfgOf(st.ch)
+      if (!cfg) {
+        this.arpStop(st)
+        continue
+      }
+      st.sounding = st.sounding.filter((s) => {
+        if (s.off > now) return true
+        engine.noteOff(s.n, st.ch)
+        return false
+      })
+      if (!st.notes.length) {
+        if (!st.sounding.length) this.arps.delete(st.ch)
+        continue
+      }
+      let guard = 0
+      while (st.next <= now && guard++ < 8) this.arpFire(st, cfg, now)
+      if (st.next < now - 200) st.next = now
+    }
+    if (!this.arps.size && this.arpTimer) {
+      clearInterval(this.arpTimer)
+      this.arpTimer = null
+      arpStep.set(-1)
+    }
+  }
+
+  private arpFire(st: ArpState, cfg: ArpCfg, now: number) {
+    const stepMs = (60000 / Math.max(30, this.bpm)) * (DIVS[cfg.div] ?? DIVS[3]).beats
+    const idx = st.pos % Math.max(1, cfg.steps)
+    const sw = (cfg.swing / 100) * 0.5
+    st.next += stepMs * (st.pos % 2 === 0 ? 1 + sw : 1 - sw)
+    st.pos++
+    arpStep.set(idx)
+    if (!cfg.on[idx]) return
+    // notas em ordem (ou na ordem tocada), repetidas pelas oitavas
+    const base = cfg.style === 5 ? st.notes : [...st.notes].sort((a, b) => a.n - b.n)
+    const seq: { n: number; v: number }[] = []
+    for (let o = 0; o < Math.max(1, cfg.oct); o++) base.forEach((x) => seq.push({ n: x.n + 12 * o, v: x.v }))
+    const L = seq.length
+    if (!L) return
+    const gateMs = Math.max(25, stepMs * (cfg.gate / 100))
+    const fire = (x: { n: number; v: number }) => {
+      if (x.n < 0 || x.n > 127) return
+      const v = clamp((x.v * cfg.vel[idx]) / 100)
+      if (v <= 0) return
+      st.sounding = st.sounding.filter((s) => {
+        if (s.n !== x.n) return true
+        engine.noteOff(s.n, st.ch)
+        return false
+      })
+      engine.noteOn(x.n, v, st.ch)
+      st.sounding.push({ n: x.n, off: now + gateMs })
+    }
+    if (cfg.style === 6) {
+      base.forEach(fire)
+      return
+    }
+    const k = st.i++
+    let j: number
+    switch (cfg.style) {
+      case 1:
+        j = L - 1 - (k % L)
+        break
+      case 2: {
+        const cyc = Math.max(1, 2 * L - 2)
+        const m = k % cyc
+        j = m < L ? m : 2 * L - 2 - m
+        break
+      }
+      case 3: {
+        const cyc = Math.max(1, 2 * L - 2)
+        const m = k % cyc
+        j = L - 1 - (m < L ? m : 2 * L - 2 - m)
+        break
+      }
+      case 4:
+        j = Math.floor(Math.random() * L)
+        break
+      default:
+        j = k % L
+    }
+    fire(seq[j])
   }
 
 
@@ -273,12 +436,12 @@ class Rig {
       rotorValue.set(should ? (this.rotFast ? 'fast' : 'slow') : null)
       if (should) {
         this.rotChs = []
-        this.assign.forEach((ch, i) => ch != null && this.rotChs.push({ ch, pan: this.layers[i]?.pan ?? 64 }))
+        this.assign.forEach((ch, i) => ch != null && this.rotChs.push({ ch, pan: fxValues(this.layers[i] ?? { timbre: null, vol: 0, zone: 'all' }).pan }))
       }
     }
     if (!this.rotOn) return
     // atualiza a lista de canais (camadas editadas ao vivo)
-    this.rotChs = this.assign.flatMap((ch, i) => (ch != null && this.isOrgan(this.layers[i]?.timbre ?? null) ? [{ ch, pan: this.layers[i].pan ?? 64 }] : []))
+    this.rotChs = this.assign.flatMap((ch, i) => (ch != null && this.isOrgan(this.layers[i]?.timbre ?? null) ? [{ ch, pan: fxValues(this.layers[i]).pan }] : []))
     const target = this.rotFast ? 6.6 : 0.8
     // inércia do rotor: acelera em ~1,2 s e desacelera em ~3 s
     const rate = target > this.rotFreq ? 4.8 : 1.9
@@ -327,6 +490,7 @@ class Rig {
       this.mod = value
       const v = Math.round(64 + (value / 127) * 63)
       LAYER_CH.forEach((ch) => engine.cc(74, v, ch))
+      this.assign.forEach((ch, i) => ch != null && this.layers[i] && engine.cc(74, this.cutoffOf(fxValues(this.layers[i]).cutoff), ch))
       pad.setMod(value)
       return
     }
@@ -343,6 +507,7 @@ class Rig {
     engine.panic()
     pad.reset()
     this.held.clear()
+    this.arps.clear()
     this.carried = []
     this.sustainDown = false
     ALL_CH.forEach((ch) => engine.cc(123, 0, ch))

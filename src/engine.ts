@@ -93,6 +93,7 @@ export class Engine {
     await synth.isReady
     synth.setSystemParameter('reverbGain', 2.2)
     synth.setSystemParameter('chorusGain', 3)
+    synth.setSystemParameter('delayGain', 2)
     await Promise.race([ctx.resume(), new Promise((r) => setTimeout(r, 1500))])
     this.ctx = ctx
     this.synth = synth
