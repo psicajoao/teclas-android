@@ -435,10 +435,16 @@ function Picker({ onPick, onClose, padMode }: { onPick: (id: string | null) => v
         {isCustom && (
           <div className="pick-tools">
             <input className="pick-search" type="search" placeholder="Buscar nos meus bancos…" value={q} onChange={(e) => setQ(e.target.value)} />
-            <label className="ghost addsf" aria-disabled={busy}>
-              ＋ Adicionar
-              <input type="file" accept=".sf2,.sf3" multiple hidden disabled={busy || listBanks().length >= MAX_BANKS} onChange={(e) => void add(e.target.files)} />
-            </label>
+            {listBanks().length >= MAX_BANKS ? (
+              <button className="ghost addsf" onClick={() => setMsg(`A lista já está cheia (${MAX_BANKS} SoundFonts, o limite). Toque em "Limpar da lista" no aviso abaixo, ou em Editar, para liberar espaço e depois adicione de novo.`)}>
+                ＋ Adicionar
+              </button>
+            ) : (
+              <label className="ghost addsf" aria-disabled={busy}>
+                ＋ Adicionar
+                <input type="file" accept=".sf2,.sf3" multiple hidden disabled={busy} onChange={(e) => void add(e.target.files)} />
+              </label>
+            )}
             {hasCustom && (
               <button className={'ghost' + (edit ? ' on' : '')} onClick={() => setEdit(!edit)}>
                 {edit ? 'Concluir' : 'Editar'}
@@ -457,7 +463,38 @@ function Picker({ onPick, onClose, padMode }: { onPick: (id: string | null) => v
           </p>
         )}
         {msg && <p className="pick-hint">{msg}</p>}
-        {isCustom && bankInfo.failed.length > 0 && <p className="pick-hint">Não pôde ser lido: {bankInfo.failed.join(', ')}</p>}
+        {isCustom && bankInfo.failed.length > 0 && (() => {
+          const miss = bankInfo.failed.filter((n) => bankInfo.reasons[n]?.why === 'vazio')
+          const bad = bankInfo.failed.filter((n) => bankInfo.reasons[n]?.why !== 'vazio')
+          return (
+            <>
+              {miss.length > 0 && (
+                <p className="pick-hint">
+                  O arquivo destes SoundFonts não está mais guardado neste aparelho (o navegador limpou os dados ou o ícone foi reinstalado): {miss.join(', ')}. Toque em
+                  <button
+                    className="linkbtn"
+                    onClick={async () => {
+                      for (const n of miss) {
+                        await removeBank(bankInfo.reasons[n].slot)
+                        delete bankInfo.reasons[n]
+                        bankInfo.failed = bankInfo.failed.filter((x) => x !== n)
+                      }
+                      setHid(new Set(getHidden()))
+                    }}
+                  >
+                    Limpar da lista
+                  </button>
+                  e depois em ＋ Adicionar para colocar os arquivos .sf2 de novo.
+                </p>
+              )}
+              {bad.length > 0 && (
+                <p className="pick-hint">
+                  Não carregou: {bad.map((n) => `${n} (${bankInfo.reasons[n]?.why || 'erro'})`).join(', ')}
+                </p>
+              )}
+            </>
+          )
+        })()}
         <div className="cards">
           {shown.map((t) => (
             <button key={t.id} className={'card' + (isCustom && edit ? ' edit' : '')} disabled={busy} onClick={() => (isCustom && edit ? void removeSound(t) : onPick(t.id))}>

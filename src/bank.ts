@@ -115,7 +115,7 @@ import { createValue } from './signal'
 export const customStatus = createValue('')
 
 /** Preenchido pelo engine na partida. */
-export const bankInfo = { failed: [] as string[] }
+export const bankInfo = { failed: [] as string[], reasons: {} as Record<string, { slot: number; why: string }> }
 
 // Sons "removidos" da lista (o arquivo continua guardado até o último som dele ser removido).
 const HID = 'teclas-android.hidden'

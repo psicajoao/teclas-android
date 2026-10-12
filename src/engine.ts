@@ -166,8 +166,9 @@ export class Engine {
         fresh.forEach((p) => known.add(key(p)))
         found.push({ bank: meta, patches: fresh })
         registerCustom(found)
-      } catch {
+      } catch (e) {
         bankInfo.failed.push(meta.name)
+        bankInfo.reasons[meta.name] = { slot: meta.slot, why: e instanceof Error ? e.message : String(e) }
       }
     }
     customStatus.set('')
