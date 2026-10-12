@@ -3,7 +3,7 @@ import { createValue } from './signal'
 import { listBanks, getBankData, ensureMigrated, bankInfo, BANK_STEP, customStatus } from './bank'
 import { registerCustom } from './timbres'
 import type { BankMeta } from './bank'
-import { ChanFx } from './chanfx'
+import { ChanFx, isNeutral } from './chanfx'
 import type { SndCfg } from './chanfx'
 
 const BASE = import.meta.env.BASE_URL
@@ -14,12 +14,35 @@ export class Engine {
   ctx: AudioContext | null = null
   synth: WorkletSynthesizer | null = null
   private analyser: AnalyserNode | null = null
-  chains: ChanFx[] = []
+  /** Cadeia (compressor/EQ…) de cada canal: só existe enquanto o canal tem algo alterado. */
+  chains: (ChanFx | null)[] = Array(16).fill(null)
   /** Aplica a página de som (compressor/EQ/ajustes) de um canal MIDI. */
   setChannelFx(ch: number, c: SndCfg, volFrac: number) {
-    this.chains[ch]?.apply(c, volFrac)
     this.maxVoices[ch] = Math.max(1, c.set.voices)
+    const synth = this.synth ?? this.pendingSynth
+    const out = this.analyser
+    if (!synth || !out || !this.ctx && !this.pendingCtx) return
+    const chain = this.chains[ch]
+    if (isNeutral(c)) {
+      if (chain) {
+        synth.disconnectChannel(chain.input, ch)
+        synth.connectChannel(out, ch)
+        chain.dispose()
+        this.chains[ch] = null
+      }
+      return
+    }
+    let fx = chain
+    if (!fx) {
+      fx = new ChanFx((this.ctx ?? this.pendingCtx)!, out)
+      this.chains[ch] = fx
+      synth.disconnectChannel(out, ch)
+      synth.connectChannel(fx.input, ch)
+    }
+    fx.apply(c, volFrac)
   }
+  private pendingSynth: WorkletSynthesizer | null = null
+  private pendingCtx: AudioContext | null = null
   private maxVoices: number[] = Array(16).fill(64)
   private voices: number[][] = Array.from({ length: 16 }, () => [])
   private buf = new Uint8Array(512)
@@ -74,13 +97,10 @@ export class Engine {
     analyser.fftSize = 512
     analyser.connect(ctx.destination)
     this.analyser = analyser
-    // saída 0 = reverb/chorus/delay (global); saídas 1–16 = cada canal, seco, passando pela sua cadeia (compressor, EQ…)
-    ;(synth as unknown as { worklet: AudioWorkletNode }).worklet.connect(analyser, 0)
-    for (let ch = 0; ch < 16; ch++) {
-      const fx = new ChanFx(ctx, analyser)
-      this.chains[ch] = fx
-      synth.connectChannel(fx.input, ch)
-    }
+    // tudo vai direto para a saída; um canal só passa por uma cadeia própria quando a página de som dele está alterada
+    synth.connect(analyser)
+    this.pendingSynth = synth
+    this.pendingCtx = ctx
     {
       this.onStage?.('Baixando sons…')
       const res = await fetch(BASE + 'sounds/GeneralUser-GS.sf2')

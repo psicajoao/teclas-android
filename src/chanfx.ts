@@ -40,6 +40,9 @@ export const SND_PRESETS: { name: string; snd: SndPatch }[] = [
   { name: 'Corta graves (baixo do outro teclado)', snd: { eq: { on: true, bands: [-12, -8, -3, 0, 0, 0, 0, 0] } } },
 ]
 
+/** Sem nada alterado: o canal vai direto para a saída, sem gastar processamento. */
+export const isNeutral = (c: SndCfg) => !c.comp.on && !c.eq.on && c.set.pan === 0 && c.set.sampler === 0 && c.set.volRange === 0
+
 const db = (x: number) => Math.pow(10, x / 20)
 
 /** Cadeia de áudio de um canal MIDI: ganho → compressor (mix seco/molhado) → ganho → EQ 8 bandas → pan → saída. */
@@ -91,6 +94,9 @@ export class ChanFx {
     this.panner = ctx.createStereoPanner()
     prev.connect(this.panner)
     this.panner.connect(dest)
+  }
+  dispose() {
+    try { this.input.disconnect(); this.panner.disconnect() } catch { /* */ }
   }
   /** `volFrac` = posição do fader (0–1), usada pela "faixa do fader de volume". */
   apply(c: SndCfg, volFrac: number) {
