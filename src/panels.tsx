@@ -1,0 +1,347 @@
+import { useEffect, useState } from 'react'
+import { engine } from './engine'
+import { useValue } from './signal'
+import { bindingsValue, waitingValue, lastMsgValue, setBinding, clearAll, describeBinding, learnOpen } from './learn'
+import { midiConf, setMidiConf } from './midiconf'
+
+/* ---------------------------------------------------------------- gaveta (☰) */
+export function Drawer({ onClose, onLearn, onSettings }: { onClose: () => void; onLearn: () => void; onSettings: () => void }) {
+  useEffect(() => {
+    const k = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
+    window.addEventListener('keydown', k)
+    return () => window.removeEventListener('keydown', k)
+  }, [onClose])
+  return (
+    <div className="drawer-wrap" onClick={onClose}>
+      <nav className="drawer" aria-label="Menu" onClick={(e) => e.stopPropagation()}>
+        <h2>Menu</h2>
+        <button className="drawer-item" onClick={onLearn}>
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="9" />
+            <circle cx="12" cy="12" r="3" />
+            <path d="M12 3v3M12 18v3M3 12h3M18 12h3" />
+          </svg>
+          <span>
+            MIDI Learn<small>Ensinar os botões do seu controlador</small>
+          </span>
+        </button>
+        <button className="drawer-item" onClick={onSettings}>
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M4 7h10M18 7h2M4 17h2M10 17h10" />
+            <circle cx="16" cy="7" r="2" />
+            <circle cx="8" cy="17" r="2" />
+          </svg>
+          <span>
+            Configurações<small>Áudio e MIDI</small>
+          </span>
+        </button>
+      </nav>
+    </div>
+  )
+}
+
+/* ---------------------------------------------------------------- configurações */
+type Dev = { id: string; name: string }
+
+function kindOfOutput(label: string) {
+  const l = label.toLowerCase()
+  if (/bluetooth|airpods|buds|headset|fone|headphone|beats|jbl/.test(l)) return { t: 'Bluetooth / fone', warn: true }
+  if (/usb|interface|scarlett|focusrite|behringer|presonus|audient|steinberg|motu|rme|ur\d/.test(l)) return { t: 'Interface de áudio', warn: false }
+  if (/built-in|builtin|speaker|alto-falante|internal|macbook|integrad/.test(l)) return { t: 'Alto-falante do aparelho', warn: false }
+  if (/hdmi|display|monitor/.test(l)) return { t: 'HDMI / monitor', warn: false }
+  return { t: '', warn: false }
+}
+
+function AudioTab({ latency }: { latency: { handler: number; output: number } | null }) {
+  const [, tick] = useState(0)
+  const [outs, setOuts] = useState<MediaDeviceInfo[]>([])
+  const [sink, setSink] = useState('')
+  const [err, setErr] = useState('')
+  useEffect(() => {
+    const t = setInterval(() => tick((n) => n + 1), 1000)
+    navigator.mediaDevices
+      ?.enumerateDevices()
+      .then((l) => setOuts(l.filter((d) => d.kind === 'audiooutput')))
+      .catch(() => {})
+    return () => clearInterval(t)
+  }, [])
+  const ctx = engine.ctx
+  const anyCtx = ctx as (AudioContext & { sinkId?: string | { type: string }; setSinkId?: (id: string) => Promise<void> }) | null
+  const canSink = !!anyCtx && typeof anyCtx.setSinkId === 'function'
+  const base = ctx ? Math.round(ctx.baseLatency * 1000) : 0
+  const out = ctx ? Math.round((ctx.outputLatency || 0) * 1000) : 0
+  const cur = outs.find((d) => d.deviceId === sink) ?? outs.find((d) => d.deviceId === 'default') ?? outs[0]
+  const kind = cur?.label ? kindOfOutput(cur.label) : { t: '', warn: false }
+  const total = base + out
+  const quality = total < 25 ? 'Excelente para tocar ao vivo' : total < 50 ? 'Bom para tocar ao vivo' : total < 100 ? 'Perceptível: prefira cabo ou interface' : 'Alto: difícil tocar em tempo real'
+  const choose = async (id: string) => {
+    setErr('')
+    try {
+      await anyCtx!.setSinkId!(id)
+      setSink(id)
+    } catch {
+      setErr('Não foi possível trocar a saída de áudio neste navegador.')
+    }
+  }
+  return (
+    <div className="set-body">
+      <div className="set-card">
+        <h3>Como o áudio está sendo usado</h3>
+        <dl>
+          <dt>Motor de áudio</dt>
+          <dd>{ctx ? (ctx.state === 'running' ? 'Ligado' : 'Pausado') : 'Desligado'}</dd>
+          <dt>Taxa de amostragem</dt>
+          <dd>{ctx ? `${ctx.sampleRate / 1000} kHz` : '–'}</dd>
+          <dt>Atraso do navegador</dt>
+          <dd>{ctx ? `${base} ms` : '–'}</dd>
+          <dt>Atraso da saída</dt>
+          <dd>{ctx ? `${out} ms` : '–'}</dd>
+          <dt>Atraso total estimado</dt>
+          <dd>
+            <b>{total} ms</b> <small>{quality}</small>
+          </dd>
+          {latency && (
+            <>
+              <dt>Última nota medida</dt>
+              <dd>{latency.handler + latency.output} ms</dd>
+            </>
+          )}
+        </dl>
+      </div>
+      <div className="set-card">
+        <h3>Saída de áudio</h3>
+        {canSink ? (
+          <label className="set-field">
+            Dispositivo
+            <select value={sink || cur?.deviceId || ''} onChange={(e) => choose(e.target.value)}>
+              {outs.length === 0 && <option value="">Padrão do sistema</option>}
+              {outs.map((d, i) => (
+                <option key={d.deviceId || i} value={d.deviceId}>
+                  {d.label || (d.deviceId === 'default' ? 'Padrão do sistema' : `Saída ${i + 1}`)}
+                </option>
+              ))}
+            </select>
+          </label>
+        ) : (
+          <p className="set-note">Este navegador usa sempre a saída padrão do sistema. Troque a saída nas configurações de som do aparelho.</p>
+        )}
+        {kind.t && <p className="set-chip">{kind.t}</p>}
+        {kind.warn && <p className="set-note warn">Áudio por Bluetooth costuma somar de 100 a 250 ms de atraso. Para tocar ao vivo, prefira fone com cabo, interface de áudio USB ou a saída de fone do aparelho.</p>}
+        {err && <p className="set-note warn">{err}</p>}
+        <p className="set-note">Dica: fones ou caixas com cabo e interfaces USB têm o menor atraso.</p>
+      </div>
+    </div>
+  )
+}
+
+function MidiTab({ inputs, onRefresh }: { inputs: Dev[]; onRefresh: () => void }) {
+  const conf = useValue(midiConf)
+  const last = useValue(lastMsgValue)
+  const opts = (none: string) => (
+    <>
+      <option value={none === 'all' ? 'all' : 'off'}>{none === 'all' ? 'Todos os dispositivos' : 'Nenhum'}</option>
+      {inputs.map((d) => (
+        <option key={d.id} value={d.id}>
+          {d.name}
+        </option>
+      ))}
+    </>
+  )
+  return (
+    <div className="set-body">
+      <div className="set-card">
+        <div className="set-row">
+          <h3>Dispositivos MIDI conectados</h3>
+          <button className="ghost" onClick={onRefresh}>
+            Atualizar
+          </button>
+        </div>
+        {inputs.length === 0 ? (
+          <p className="set-note">Nenhum controlador detectado. Ligue o teclado por USB ou conecte um dispositivo Bluetooth MIDI e toque uma tecla.</p>
+        ) : (
+          <ul className="devlist">
+            {inputs.map((d) => (
+              <li key={d.id}>
+                <i aria-hidden="true" />
+                {d.name}
+              </li>
+            ))}
+          </ul>
+        )}
+        <p className="set-note">
+          Bluetooth MIDI: pareie o teclado no aparelho primeiro (no Mac, em Configuração de Áudio e MIDI; no Android, no Bluetooth do sistema ou em um app como "MIDI BLE Connect"). Quando estiver conectado, ele aparece aqui sozinho.
+        </p>
+        <p className="set-note">
+          Última mensagem recebida: <b>{last || 'nenhuma ainda'}</b>
+        </p>
+      </div>
+      <div className="set-card">
+        <h3>Teclados</h3>
+        <label className="set-field">
+          Teclado 1 (principal)
+          <select value={conf.kb1} onChange={(e) => setMidiConf({ ...conf, kb1: e.target.value })}>
+            {opts('all')}
+          </select>
+        </label>
+        <label className="set-field">
+          Teclado 2 (outro teclado, módulo ou sistema MIDI)
+          <select value={conf.kb2} onChange={(e) => setMidiConf({ ...conf, kb2: e.target.value })}>
+            {opts('off')}
+          </select>
+        </label>
+        <label className="set-check">
+          <input type="checkbox" checked={conf.kb2Notes} disabled={conf.kb2 === 'off'} onChange={(e) => setMidiConf({ ...conf, kb2Notes: e.target.checked })} />
+          O teclado 2 também toca notas (desmarque para usá-lo só como controle de botões, pedais e faders)
+        </label>
+        <p className="set-note">Com "Todos os dispositivos" no teclado 1, tudo que estiver conectado funciona junto.</p>
+      </div>
+    </div>
+  )
+}
+
+export function SettingsPanel({ onClose, inputs, latency, onRefresh }: { onClose: () => void; inputs: Dev[]; latency: { handler: number; output: number } | null; onRefresh: () => void }) {
+  const [tab, setTab] = useState<'audio' | 'midi'>('audio')
+  useEffect(() => {
+    const k = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
+    window.addEventListener('keydown', k)
+    return () => window.removeEventListener('keydown', k)
+  }, [onClose])
+  return (
+    <div className="zmodal setpanel" role="dialog" aria-modal="true" aria-label="Configurações">
+      <div className="zhead">
+        <div>
+          <h2>Configurações</h2>
+          <div className="tabs" role="tablist">
+            <button role="tab" aria-selected={tab === 'audio'} className={tab === 'audio' ? 'on' : ''} onClick={() => setTab('audio')}>
+              Áudio
+            </button>
+            <button role="tab" aria-selected={tab === 'midi'} className={tab === 'midi' ? 'on' : ''} onClick={() => setTab('midi')}>
+              MIDI
+            </button>
+          </div>
+        </div>
+        <button className="ghost" onClick={onClose}>
+          Fechar
+        </button>
+      </div>
+      {tab === 'audio' ? <AudioTab latency={latency} /> : <MidiTab inputs={inputs} onRefresh={onRefresh} />}
+    </div>
+  )
+}
+
+/* ---------------------------------------------------------------- MIDI Learn */
+function Spot({ id, label, kind = 'btn', className = '' }: { id: string; label: string; kind?: 'btn' | 'slider' | 'knob' | 'vslider'; className?: string }) {
+  const binds = useValue(bindingsValue)
+  const waiting = useValue(waitingValue)
+  const b = binds[id]
+  const wait = waiting === id
+  return (
+    <div className={'spot ' + kind + (b ? ' bound' : '') + (wait ? ' wait' : '') + ' ' + className}>
+      <button className="spot-hit" onClick={() => waitingValue.set(wait ? null : id)} aria-pressed={wait} aria-label={`Ensinar: ${label}`}>
+        {kind === 'slider' && <i className="bar" />}
+        {kind === 'vslider' && <i className="vbar" />}
+        {kind === 'knob' && <i className="kn" />}
+        <span className="sl">{label}</span>
+        <span className="sb">{wait ? 'Mexa no controlador…' : b ? describeBinding(b) : ''}</span>
+      </button>
+      {b && !wait && (
+        <button className="spot-x" onClick={() => setBinding(id, null)} aria-label={`Apagar ${label}`} title="Apagar">
+          ×
+        </button>
+      )}
+    </div>
+  )
+}
+
+const TONES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
+
+export function LearnPanel({ onClose, hasMidi }: { onClose: () => void; hasMidi: boolean }) {
+  const binds = useValue(bindingsValue)
+  const waiting = useValue(waitingValue)
+  useEffect(() => {
+    learnOpen.current = true
+    const k = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return
+      if (waitingValue.get()) waitingValue.set(null)
+      else onClose()
+    }
+    window.addEventListener('keydown', k)
+    return () => {
+      learnOpen.current = false
+      waitingValue.set(null)
+      window.removeEventListener('keydown', k)
+    }
+  }, [onClose])
+  const count = Object.keys(binds).length
+  return (
+    <div className="zmodal lmodal" role="dialog" aria-modal="true" aria-label="MIDI Learn">
+      <div className="zhead">
+        <div>
+          <h2>MIDI Learn</h2>
+          <p>
+            {waiting
+              ? 'Agora aperte ou mexa no botão do seu controlador. Para cancelar, toque no controle de novo ou aperte Esc.'
+              : hasMidi
+                ? 'Toque em um controle da tela e depois mexa no botão do controlador que vai comandá-lo. Tudo fica salvo automaticamente.'
+                : 'Nenhum controlador MIDI conectado. Conecte um e depois toque num controle da tela.'}
+          </p>
+        </div>
+        <div className="lbtns">
+          <span className="lcount">{count} ensinado{count === 1 ? '' : 's'}</span>
+          <button className="ghost" onClick={() => count && window.confirm('Apagar todos os controles ensinados?') && clearAll()} disabled={!count}>
+            Limpar tudo
+          </button>
+          <button className="ghost" onClick={onClose}>
+            Concluir
+          </button>
+        </div>
+      </div>
+      <div className="wf">
+        <section className="wf-row wf-top">
+          <Spot id="bpm:-1" label="BPM −" />
+          <Spot id="bpm:+1" label="BPM +" />
+          <Spot id="metro" label="Metrônomo" />
+          <Spot id="transpose:-1" label="Transp. −" />
+          <Spot id="transpose:+1" label="Transp. +" />
+          <Spot id="click" label="Volume do clique" kind="slider" />
+          <Spot id="tap" label="Tap tempo" />
+          <Spot id="master" label="Volume geral" kind="slider" />
+          <Spot id="panic" label="Panic" />
+        </section>
+        <section className="wf-row">
+          <Spot id="song:prev" label="◀ Música anterior" />
+          <Spot id="song:next" label="Próxima música ▶" />
+        </section>
+        <section className="wf-layers">
+          {Array.from({ length: 10 }, (_, i) => (
+            <div className="wf-layer" key={i}>
+              <Spot id={`layer:${i}:power`} label={`Camada ${i + 1}`} />
+              <Spot id={`layer:${i}:vol`} label="Volume" kind="vslider" />
+            </div>
+          ))}
+        </section>
+        <section className="wf-pad">
+          <h3>Pad contínuo</h3>
+          <Spot id="pad:toggle" label="Ligar / parar" />
+          <div className="wf-tones">
+            {TONES.map((t, n) => (
+              <Spot key={t} id={`pad:tone:${n}`} label={t} />
+            ))}
+          </div>
+          <div className="wf-padctl">
+            <Spot id="pad:vol" label="Volume" kind="slider" />
+            <Spot id="pad:bright" label="Brightness" kind="knob" />
+            <Spot id="pad:shimmer" label="Shimmer" kind="knob" />
+          </div>
+        </section>
+        <section className="wf-row wf-secs">
+          {Array.from({ length: 8 }, (_, i) => (
+            <Spot key={i} id={`sec:${i}`} label={`Seção ${i + 1}`} />
+          ))}
+          <Spot id="sustain" label="Sustain" />
+          <Spot id="kb:big" label="Teclado grande" />
+        </section>
+      </div>
+    </div>
+  )
+}
