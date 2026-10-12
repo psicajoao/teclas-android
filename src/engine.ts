@@ -34,6 +34,12 @@ export class Engine {
     this.onStage?.('Ligando o áudio…')
     const ctx = new AudioContext({ latencyHint: 'interactive' })
     void ctx.resume().catch(() => {})
+    // iOS: tocar mesmo com o modo silencioso ligado, e religar o áudio se o sistema o suspender.
+    try { (navigator as unknown as { audioSession?: { type: string } }).audioSession!.type = 'playback' } catch { /* */ }
+    const wake = () => { if (ctx.state !== 'running') void ctx.resume().catch(() => {}) }
+    for (const ev of ['pointerdown', 'touchend', 'keydown'] as const) document.addEventListener(ev, wake, true)
+    document.addEventListener('visibilitychange', wake)
+    ctx.onstatechange = wake
     await ctx.audioWorklet.addModule(BASE + 'spessasynth_processor.min.js')
     const synth = new WorkletSynthesizer(ctx)
     const analyser = ctx.createAnalyser()
