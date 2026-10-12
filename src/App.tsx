@@ -10,7 +10,7 @@ import { addBanks, removeBank, getHidden, setHidden, slotOf, listBanks, MAX_BANK
 import type { Timbre } from './timbres'
 import { customStatus } from './bank'
 import { FxSheet } from './fxpanel'
-import { slotsOf, fxDef } from './fx'
+import { slotsOf, fxDef, groupSummary } from './fx'
 import type { FxSlot } from './fx'
 import { audioOn } from './engine'
 import { TIMBRES, GROUPS, FAVORITES, CUSTOM_GROUP, customVersion } from './timbres'
@@ -1068,6 +1068,7 @@ export default function App() {
           color={LCOLORS[fxEdit.layer]}
           onSlots={(fx) => setSlots(fxEdit.layer, fx)}
           onClose={() => setFxEdit(null)}
+          tempo={{ bpm, onBpm: setBpm, onTap: tap, metroOn, onMetro: toggleMetro }}
         />
       )}
       {chMenu != null && section.layers[chMenu] && (
@@ -1420,18 +1421,20 @@ export default function App() {
                         <div className="fxslots">
                           {slotsOf(l).map((sl, si) => {
                             const d = fxDef(sl.type)
+                            const has = si === 0 ? !!sl.type : true
+                            const name = si === 0 ? (d ? (d.type === 'arp' ? 'Arpejo' : d.label) : 'Escolher') : groupSummary(sl, si === 1 ? 'efx' : 'snd')
                             return (
-                              <div key={si} className={'fxslot' + (sl.type ? (sl.on ? ' on' : ' off') : ' empty')}>
+                              <div key={si} className={'fxslot' + (has ? (sl.on ? ' on' : ' off') : ' empty')}>
                                 <button
                                   className="fxpow"
-                                  disabled={!sl.type}
+                                  disabled={!has}
                                   aria-pressed={sl.on}
                                   aria-label={sl.on ? 'Desligar efeito' : 'Ligar efeito'}
                                   onClick={() => toggleFx(i, si)}
                                 />
                                 <button className="fxname" onClick={() => setFxEdit({ layer: i, slot: si })}>
-                                  <small>{si === 0 ? 'MIDI' : `Áudio ${si}`}</small>
-                                  <b>{d ? (d.type === 'arp' ? 'Arpejo' : d.label) : 'Escolher'}</b>
+                                  <small>{si === 0 ? 'MIDI' : si === 1 ? 'Efeitos' : 'Som'}</small>
+                                  <b>{name}</b>
                                 </button>
                               </div>
                             )

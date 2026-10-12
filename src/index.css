@@ -860,3 +860,18 @@ h1 span { color: var(--cyan); text-shadow: 0 0 16px #00e5ff77; }
   .fit .mix .fader { width: 36px; }
   .fit .mix { gap: 5px; }
 }
+
+/* grupos de efeitos (vários ligados ao mesmo tempo) */
+.fxs-group { display: flex; flex-direction: column; gap: 8px; }
+.fxg-row { display: flex; align-items: center; gap: 14px; padding: 10px 12px; border-radius: 14px; border: 1px solid var(--line); background: var(--panel); }
+.fxg-row.on { border-color: color-mix(in srgb, var(--c) 70%, #000); background: color-mix(in srgb, var(--c) 10%, var(--panel)); }
+.fxg-pow { flex: none; width: 34px; height: 34px; border-radius: 50%; border: 0; background: radial-gradient(circle at 50% 30%, #3a2d52, #120a1e 70%); box-shadow: inset 0 1px 1px #ffffff40, inset 0 -3px 5px #000, 0 0 0 2px #2a1f3d; position: relative; cursor: pointer; }
+.fxg-pow::after { content: ''; position: absolute; inset: 9px; border-radius: 50%; background: #2a1f3d; }
+.fxg-row.on .fxg-pow { box-shadow: inset 0 1px 1px #ffffff40, inset 0 -3px 5px #000, 0 0 0 2px var(--c); }
+.fxg-row.on .fxg-pow::after { background: var(--c); box-shadow: 0 0 12px var(--c); }
+.fxg-name { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.fxg-name b { font-size: 1.05rem; }
+.fxg-name small { color: var(--muted); font-size: .76rem; }
+.fxg-knobs { display: flex; gap: 22px; }
+.fxg-knobs .knob { width: 58px; height: 58px; }
+.arp-tempo { display: flex; align-items: center; gap: 8px; }

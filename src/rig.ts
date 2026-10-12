@@ -2,6 +2,7 @@ import { engine } from './engine'
 import { TIMBRES } from './timbres'
 import { rotorValue, arpStep } from './signal'
 import { fxValues, DIVS } from './fx'
+import { metro } from './metronome'
 import type { FxSlot, ArpCfg } from './fx'
 
 export type Zone = 'all' | 'left' | 'right'
@@ -288,9 +289,14 @@ class Rig {
     st.notes = st.notes.filter((x) => x.n !== note)
     st.notes.push({ n: note, v: vel })
     if (st.notes.length === 1 && st.sounding.length === 0) {
+      // começa no próximo passo da grade do metrônomo (ou da grade fixa, se o metrônomo está parado)
+      const now = performance.now()
+      const stepMs = (60000 / Math.max(30, this.bpm)) * (DIVS[cfg.div] ?? DIVS[3]).beats
+      const anchor = metro.barAnchor() ?? 0
+      const k = Math.ceil((now - anchor) / stepMs - 0.02)
       st.i = 0
-      st.pos = 0
-      st.next = performance.now()
+      st.pos = ((k % Math.max(1, cfg.steps)) + Math.max(1, cfg.steps)) % Math.max(1, cfg.steps)
+      st.next = anchor + k * stepMs
     }
     if (!this.arpTimer) this.arpTimer = setInterval(() => this.arpTick(), 6)
   }

@@ -1,6 +1,7 @@
 import type { Layer } from './rig'
 
-export type FxType = 'arp' | 'oct' | 'chord' | 'reverb' | 'chorus' | 'delay' | 'pan' | 'filter' | 'env'
+/** arp/oct/chord = botão MIDI (uma escolha). efx/snd = grupos de áudio com vários efeitos ligáveis ao mesmo tempo. */
+export type FxType = 'arp' | 'oct' | 'chord' | 'efx' | 'snd'
 
 /** Arpejador de uma camada. */
 export type ArpCfg = {
@@ -75,6 +76,7 @@ const bip = (v: number) => {
   const d = Math.round(((v - 64) / 64) * 100)
   return d === 0 ? 'normal' : d > 0 ? `+${d}` : `${d}`
 }
+const panFmt = (v: number) => (v === 64 ? 'centro' : v < 64 ? `E ${Math.round(((64 - v) / 64) * 100)}` : `D ${Math.round(((v - 64) / 63) * 100)}`)
 
 export const CHORDS = [
   { v: 0, l: 'Maior', iv: [0, 4, 7] },
@@ -85,8 +87,47 @@ export const CHORDS = [
   { v: 5, l: '7ª', iv: [0, 4, 7, 10] },
 ]
 
+/** Efeitos dentro de um grupo: cada um liga/desliga sozinho e tem seus ajustes. */
+export type SubFx = { id: string; label: string; hint: string; params: { key: string; label: string; def: number; fmt: (v: number) => string }[] }
+export const GROUPS: Record<'efx' | 'snd', { label: string; hint: string; items: SubFx[] }> = {
+  efx: {
+    label: 'Efeitos',
+    hint: 'Ligue quantos quiser ao mesmo tempo.',
+    items: [
+      { id: 'reverb', label: 'Reverb', hint: 'Espaço e ambiente', params: [{ key: 'reverb', label: 'Quantidade', def: 40, fmt: pct }] },
+      { id: 'chorus', label: 'Chorus', hint: 'Dobra e alarga o som', params: [{ key: 'chorus', label: 'Quantidade', def: 50, fmt: pct }] },
+      { id: 'delay', label: 'Delay', hint: 'Eco que repete a nota', params: [{ key: 'delay', label: 'Quantidade', def: 45, fmt: pct }] },
+      { id: 'pan', label: 'Pan', hint: 'Esquerda ou direita', params: [{ key: 'pan', label: 'Posição', def: 64, fmt: panFmt }] },
+    ],
+  },
+  snd: {
+    label: 'Som',
+    hint: 'Molde o timbre. Ligue quantos quiser.',
+    items: [
+      {
+        id: 'filter',
+        label: 'Filtro',
+        hint: 'Cutoff escurece ou clareia o som',
+        params: [
+          { key: 'cutoff', label: 'Cutoff', def: 64, fmt: bip },
+          { key: 'reso', label: 'Ressonância', def: 64, fmt: bip },
+        ],
+      },
+      {
+        id: 'env',
+        label: 'Envelope',
+        hint: 'Ataque e release',
+        params: [
+          { key: 'attack', label: 'Ataque', def: 64, fmt: bip },
+          { key: 'release', label: 'Release', def: 64, fmt: bip },
+        ],
+      },
+    ],
+  },
+}
+
 export const FX_DEFS: FxDef[] = [
-  { type: 'arp', label: 'Arpejador', kind: 'midi', hint: 'Toca as notas que você segura em sequência.', params: [] },
+  { type: 'arp', label: 'Arpejador', kind: 'midi', hint: 'Toca as notas que você segura em sequência, no tempo do metrônomo.', params: [] },
   {
     type: 'oct',
     label: 'Oitava',
@@ -124,49 +165,69 @@ export const FX_DEFS: FxDef[] = [
     hint: 'Cada nota que você toca vira um acorde.',
     params: [{ kind: 'seg', key: 'kind', label: 'Acorde', def: 0, options: CHORDS.map((c) => ({ v: c.v, l: c.l })) }],
   },
-  { type: 'reverb', label: 'Reverb', kind: 'audio', hint: 'Espaço e ambiente do som.', params: [{ kind: 'knob', key: 'level', label: 'Quantidade', def: 40, fmt: pct }] },
-  { type: 'chorus', label: 'Chorus', kind: 'audio', hint: 'Dobra e alarga o som.', params: [{ kind: 'knob', key: 'level', label: 'Quantidade', def: 50, fmt: pct }] },
-  { type: 'delay', label: 'Delay', kind: 'audio', hint: 'Eco que repete a nota.', params: [{ kind: 'knob', key: 'level', label: 'Quantidade', def: 45, fmt: pct }] },
-  { type: 'pan', label: 'Pan', kind: 'audio', hint: 'Posição do som entre esquerda e direita.', params: [{ kind: 'knob', key: 'pan', label: 'Posição', def: 64, fmt: (v) => (v === 64 ? 'centro' : v < 64 ? `E ${Math.round(((64 - v) / 64) * 100)}` : `D ${Math.round(((v - 64) / 63) * 100)}`) }] },
-  {
-    type: 'filter',
-    label: 'Filtro',
-    kind: 'audio',
-    hint: 'Cutoff deixa o som mais escuro ou mais brilhante. Ressonância realça o corte.',
-    params: [
-      { kind: 'knob', key: 'cutoff', label: 'Cutoff', def: 64, fmt: bip },
-      { kind: 'knob', key: 'reso', label: 'Ressonância', def: 64, fmt: bip },
-    ],
-  },
-  {
-    type: 'env',
-    label: 'Envelope',
-    kind: 'audio',
-    hint: 'Ataque: quão rápido o som entra. Release: quanto ele demora a sumir.',
-    params: [
-      { kind: 'knob', key: 'attack', label: 'Ataque', def: 64, fmt: bip },
-      { kind: 'knob', key: 'release', label: 'Release', def: 64, fmt: bip },
-    ],
-  },
 ]
 export const fxDef = (t: FxType | null) => FX_DEFS.find((d) => d.type === t) ?? null
 
 export function newSlot(type: FxType | null, on = true): FxSlot {
   if (!type) return { type: null, on: false, p: {} }
-  const d = fxDef(type)!
   const p: Record<string, number> = {}
-  d.params.forEach((q) => (p[q.key] = q.def))
+  if (type === 'efx' || type === 'snd') {
+    GROUPS[type].items.forEach((it) => it.params.forEach((q) => (p[q.key] = q.def)))
+    return { type, on: true, p }
+  }
+  fxDef(type)!.params.forEach((q) => (p[q.key] = q.def))
   return type === 'arp' ? { type, on, p, arp: defaultArp() } : { type, on, p }
 }
 
-/** Os 3 efeitos da camada. Sem `fx` salvo: Reverb e Pan vindos dos valores antigos da camada. */
+/** Os 3 efeitos da camada: [MIDI, Efeitos, Som]. Converte formatos antigos (um efeito por botão). */
 export function slotsOf(l: Layer): FxSlot[] {
-  if (l.fx && l.fx.length === 3) return l.fx
-  const rev = newSlot('reverb')
-  rev.p.level = l.reverb ?? 40
-  const pan = newSlot('pan')
-  pan.p.pan = l.pan ?? 64
-  return [newSlot(null), rev, pan]
+  const saved = (l.fx ?? []) as FxSlot[]
+  const efx = newSlot('efx')
+  const snd = newSlot('snd')
+  let mid = newSlot(null)
+  const old = saved.length === 3 && saved[1]?.type === 'efx' && saved[2]?.type === 'snd'
+  if (old) return [saved[0]?.type && ['arp', 'oct', 'chord'].includes(saved[0].type) ? saved[0] : mid, saved[1], saved[2]]
+  if (saved.length === 3) {
+    // formato anterior: um efeito por botão
+    if (saved[0]?.type && ['arp', 'oct', 'chord'].includes(saved[0].type as string)) mid = saved[0]
+    const legacy = saved.slice(1)
+    const flag: Record<string, [FxSlot, string]> = {}
+    for (const s of legacy) {
+      const t = s?.type as string | null
+      if (!t || !s.on) continue
+      if (t === 'reverb') {
+        efx.p.reverbOn = 1
+        efx.p.reverb = s.p.level ?? 40
+      } else if (t === 'chorus') {
+        efx.p.chorusOn = 1
+        efx.p.chorus = s.p.level ?? 50
+      } else if (t === 'delay') {
+        efx.p.delayOn = 1
+        efx.p.delay = s.p.level ?? 45
+      } else if (t === 'pan') {
+        efx.p.panOn = 1
+        efx.p.pan = s.p.pan ?? 64
+      } else if (t === 'filter') {
+        snd.p.filterOn = 1
+        snd.p.cutoff = s.p.cutoff ?? 64
+        snd.p.reso = s.p.reso ?? 64
+      } else if (t === 'env') {
+        snd.p.envOn = 1
+        snd.p.attack = s.p.attack ?? 64
+        snd.p.release = s.p.release ?? 64
+      }
+    }
+    void flag
+    return [mid, efx, snd]
+  }
+  // sem efeitos salvos: usa o Reverb e o Pan antigos da camada
+  efx.p.reverbOn = 1
+  efx.p.reverb = l.reverb ?? 40
+  if (l.pan != null && l.pan !== 64) {
+    efx.p.panOn = 1
+    efx.p.pan = l.pan
+  }
+  return [mid, efx, snd]
 }
 
 export type FxValues = {
@@ -185,39 +246,34 @@ export type FxValues = {
 
 export function fxValues(l: Layer): FxValues {
   const v: FxValues = { pan: 64, reverb: 0, chorus: 0, delay: 0, cutoff: 64, reso: 64, attack: 64, release: 64, oct: null, chord: null, arp: null }
-  for (const s of slotsOf(l)) {
-    if (!s.type || !s.on) continue
-    switch (s.type) {
-      case 'reverb':
-        v.reverb = s.p.level ?? 40
-        break
-      case 'chorus':
-        v.chorus = s.p.level ?? 50
-        break
-      case 'delay':
-        v.delay = s.p.level ?? 45
-        break
-      case 'pan':
-        v.pan = s.p.pan ?? 64
-        break
-      case 'filter':
-        v.cutoff = s.p.cutoff ?? 64
-        v.reso = s.p.reso ?? 64
-        break
-      case 'env':
-        v.attack = s.p.attack ?? 64
-        v.release = s.p.release ?? 64
-        break
-      case 'oct':
-        v.oct = { shift: s.p.shift ?? 1, both: (s.p.both ?? 1) === 1 }
-        break
-      case 'chord':
-        v.chord = (CHORDS.find((c) => c.v === (s.p.kind ?? 0)) ?? CHORDS[0]).iv
-        break
-      case 'arp':
-        v.arp = s.arp ?? defaultArp()
-        break
+  const [mid, efx, snd] = slotsOf(l)
+  if (mid.type && mid.on) {
+    if (mid.type === 'oct') v.oct = { shift: mid.p.shift ?? 1, both: (mid.p.both ?? 1) === 1 }
+    if (mid.type === 'chord') v.chord = (CHORDS.find((c) => c.v === (mid.p.kind ?? 0)) ?? CHORDS[0]).iv
+    if (mid.type === 'arp') v.arp = mid.arp ?? defaultArp()
+  }
+  if (efx.on) {
+    if (efx.p.reverbOn) v.reverb = efx.p.reverb ?? 40
+    if (efx.p.chorusOn) v.chorus = efx.p.chorus ?? 50
+    if (efx.p.delayOn) v.delay = efx.p.delay ?? 45
+    if (efx.p.panOn) v.pan = efx.p.pan ?? 64
+  }
+  if (snd.on) {
+    if (snd.p.filterOn) {
+      v.cutoff = snd.p.cutoff ?? 64
+      v.reso = snd.p.reso ?? 64
+    }
+    if (snd.p.envOn) {
+      v.attack = snd.p.attack ?? 64
+      v.release = snd.p.release ?? 64
     }
   }
   return v
+}
+
+/** Texto curto dos efeitos ligados de um grupo (para o botão do canal). */
+export function groupSummary(s: FxSlot, g: 'efx' | 'snd'): string {
+  if (!s.on) return 'Desligado'
+  const on = GROUPS[g].items.filter((it) => s.p[it.id + 'On'])
+  return on.length ? on.map((it) => it.label).join(' · ') : 'Nenhum'
 }

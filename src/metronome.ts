@@ -28,6 +28,13 @@ class Metronome {
     this.onBeat?.(-1)
   }
 
+  /** Início de um compasso (em performance.now) alinhado ao metrônomo, ou null se parado. */
+  barAnchor(): number | null {
+    const ctx = engine.ctx
+    if (!ctx || !this.running) return null
+    return performance.now() + (this.next - ctx.currentTime) * 1000 - this.beat * (60000 / this.bpm)
+  }
+
   private tick() {
     const ctx = engine.ctx
     if (!ctx) return
