@@ -20,6 +20,7 @@ import { TIMBRES, GROUPS, FAVORITES, CUSTOM_GROUP, customVersion } from './timbr
 import { Drawer, SettingsPanel, LearnPanel } from './panels'
 import { waitingValue, lastMsgValue, setBinding, findAction, learnOpen } from './learn'
 import { roleOf, connectedIds } from './midiconf'
+import MidiTest from './miditest'
 import { load, save, newSong, loadPad, savePad, uid } from './store'
 import type { Song, Setlist } from './store'
 import { SetlistPage } from './setlists'
@@ -594,6 +595,7 @@ export default function App() {
   const [status, setStatus] = useState<Status>('idle')
   const [error, setError] = useState('')
   const [midiNote, setMidiNote] = useState('')
+  const [midiTest, setMidiTest] = useState(false)
   const [midiSupported] = useState(() => 'requestMIDIAccess' in navigator)
   const [inputs, setInputs] = useState<{ id: string; name: string }[]>([])
   const [volume, setVolume] = useState(100)
@@ -1486,6 +1488,8 @@ export default function App() {
           </button>
           <p className="hint">Toque em Iniciar para ligar o áudio e conectar o teclado MIDI.</p>
           <button className="ghost" onClick={() => window.dispatchEvent(new Event('palco:welcome'))}>Ver boas-vindas</button>
+          <button className="ghost" onClick={() => setMidiTest(true)}>Testar MIDI</button>
+          {midiTest && <MidiTest onClose={() => setMidiTest(false)} />}
           {error && <p className="error">{error}</p>}
           {!midiSupported && <p className="error">Este navegador não suporta MIDI. Use o Chrome.</p>}
         </section>
