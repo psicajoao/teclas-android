@@ -80,7 +80,10 @@ class Rig {
   }
 
   private used() {
-    return [...this.assign.filter((c): c is number => c != null), ...this.oldSet, ...this.carried.flatMap((c) => c.chs)]
+    return [...this.assign.filter((c): c is number => c != null), ...this.oldSet, ...this.carried.flatMap((c) => c.chs), ...this.ghostChs()]
+  }
+  private ghostChs(): number[] {
+    return [...this.ghosts.values()].flatMap((g) => g.assign.filter((c): c is number => c != null))
   }
 
   private loadLayer(ch: number, l: Layer) {
@@ -168,7 +171,7 @@ class Rig {
       this.setGroup(all, 0)
       oldChs = []
       this.carried = []
-      free = [...POOL]
+      free = POOL.filter((c) => !this.ghostChs().includes(c))
     }
     const g0 = this.gNew
     this.silenceCh(free)
@@ -239,7 +242,94 @@ class Rig {
   setMaster(v: number) {
     this.master = v
     this.setLayers(this.layers)
+    this.ghosts.forEach((_, id) => this.ghostVol(id))
     pad.setMaster(v)
+  }
+
+  /* ---- Pistas gravadas: cada uma toca com uma cópia própria das camadas de quando foi gravada ---- */
+  private ghosts = new Map<number, { layers: Layer[]; assign: (number | null)[]; held: Map<number, { ch: number; n: number }[]>; vol: number }>()
+  private ghostSeq = 1
+  /** Cópia das camadas que estão tocando agora. */
+  getLayers(): Layer[] {
+    return this.layers.map((l) => ({ ...l }))
+  }
+  private ghostLevel(l: Layer, vol: number) {
+    return clamp(((l.vol * this.master) / 127) * (vol / 127))
+  }
+  /** Reserva canais livres para as camadas e devolve o número da pista. Camadas sem canal livre ficam mudas. */
+  ghostOpen(layers: Layer[], vol = 100): number {
+    const id = this.ghostSeq++
+    const g = { layers: layers.map((l) => ({ ...l })), assign: [] as (number | null)[], held: new Map<number, { ch: number; n: number }[]>(), vol }
+    this.ghosts.set(id, g)
+    for (const l of g.layers) {
+      let ch: number | null = null
+      if (this.melodic(l)) {
+        ch = POOL.find((c) => !this.used().includes(c)) ?? null
+        if (ch != null) {
+          g.assign.push(ch)
+          this.silenceCh([ch])
+          engine.cc(11, 127, ch)
+          this.loadLayer(ch, l)
+          engine.cc(7, this.ghostLevel(l, vol), ch)
+          continue
+        }
+      }
+      g.assign.push(ch)
+    }
+    return id
+  }
+  ghostVol(id: number, vol?: number) {
+    const g = this.ghosts.get(id)
+    if (!g) return
+    if (vol != null) g.vol = vol
+    g.layers.forEach((l, i) => { const ch = g.assign[i]; if (ch != null) engine.cc(7, this.ghostLevel(l, g.vol), ch) })
+  }
+  ghostNoteOn(id: number, note: number, velocity: number) {
+    const g = this.ghosts.get(id)
+    if (!g) return
+    const outs = new Map<string, { ch: number; n: number }>()
+    g.layers.forEach((l, i) => {
+      const t = tim(l)
+      if (!t) return
+      const [lo, hi] = rangeOf(l, this.split)
+      if (note < lo || note > hi) return
+      const ch = t.drum ? DRUM_CH : g.assign[i]
+      if (ch == null) return
+      if (t.drum) { outs.set(`${ch}:${note}`, { ch, n: note }); return }
+      const f = fxValues(l)
+      const base = clamp(note + this.transpose + this.trOf(l))
+      let notes = f.chord ? f.chord.map((iv) => base + iv) : [base]
+      if (f.oct) {
+        const up = notes.map((n) => n + 12 * f.oct!.shift)
+        notes = f.oct.both ? [...notes, ...up] : up
+      }
+      notes.filter((n) => n >= 0 && n <= 127).forEach((n) => outs.set(`${ch}:${n}`, { ch, n }))
+    })
+    g.held.get(note)?.forEach((o) => engine.noteOff(o.n, o.ch))
+    outs.forEach((o) => engine.noteOn(o.n, velocity, o.ch))
+    g.held.set(note, [...outs.values()])
+  }
+  ghostNoteOff(id: number, note: number) {
+    const g = this.ghosts.get(id)
+    if (!g) return
+    g.held.get(note)?.forEach((o) => engine.noteOff(o.n, o.ch))
+    g.held.delete(note)
+  }
+  ghostSustain(id: number, down: boolean) {
+    const g = this.ghosts.get(id)
+    if (!g) return
+    g.layers.forEach((l, i) => {
+      const ch = g.assign[i]
+      if (ch != null && !sndOf(l).set.blockSustain) engine.cc(64, down ? 127 : 0, ch)
+    })
+  }
+  ghostClose(id: number) {
+    const g = this.ghosts.get(id)
+    if (!g) return
+    g.held.forEach((outs) => outs.forEach((o) => engine.noteOff(o.n, o.ch)))
+    g.held.clear()
+    this.ghostSustain(id, false)
+    this.ghosts.delete(id)
   }
 
   /** Gancho do gravador: tipo 1 toca, 0 solta, 2 pedal. */

@@ -23,7 +23,9 @@ import { roleOf, connectedIds } from './midiconf'
 import { load, save, newSong, loadPad, savePad, uid } from './store'
 import type { Song, Setlist } from './store'
 import { SetlistPage } from './setlists'
-import { looper } from './looper'
+import { looper, MAX_TRACKS } from './looper'
+import type { Track } from './looper'
+import { TracksSheet } from './tracks'
 import './index.css'
 
 type Status = 'idle' | 'loading' | 'ready' | 'error'
@@ -686,10 +688,21 @@ export default function App() {
   }
   const [, setLoopTick] = useState(0)
   looper.onState = () => setLoopTick((n) => n + 1)
-  looper.onDone = (tr) => updateSong((s) => ({ ...s, loop: tr }))
+  looper.onDone = (tr) => updateSong((s) => ({ ...s, tracks: [...(s.tracks ?? []), tr] }))
+  const [tracksOpen, setTracksOpen] = useState(false)
   useEffect(() => {
     looper.halt()
   }, [songIdx])
+  // pista única do formato antigo vira a primeira pista
+  useEffect(() => {
+    if (song.loop && !song.tracks?.length) updateSong((s) => ({ ...s, loop: null, tracks: [{ id: 'p' + Math.random().toString(36).slice(2, 8), bars: s.loop!.bars, beats: s.loop!.beats, ev: s.loop!.ev, vol: 100, q: 0 }] }))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [song.loop])
+  const trackList: Track[] = song.tracks ?? []
+  useEffect(() => {
+    looper.tracks = trackList
+    looper.sync()
+  }, [trackList])
   useEffect(() => {
     looper.bpm = bpm
     looper.beats = cfg.beats
@@ -920,16 +933,14 @@ export default function App() {
   }
   const loopPlay = () => {
     if (!ready) return
-    if (looper.state === 'play') looper.stopPlay()
-    else if (song.loop) {
+    if (looper.playing) looper.stopPlay()
+    else if (trackList.length) {
       if (!metro.running) { metro.start(); setMetroOn(true) }
-      looper.play(song.loop)
+      looper.playAll()
     }
   }
-  const loopClear = () => {
-    looper.halt()
-    updateSong((s) => ({ ...s, loop: null }))
-  }
+  const editTrack = (id: string, patch: Partial<Track>) => updateSong((s) => ({ ...s, tracks: (s.tracks ?? []).map((t) => (t.id === id ? { ...t, ...patch } : t)) }))
+  const delTrack = (id: string) => updateSong((s) => ({ ...s, tracks: (s.tracks ?? []).filter((t) => t.id !== id) }))
 
   const toggleMetro = () => {
     if (!ready) return
@@ -1376,15 +1387,15 @@ export default function App() {
                 </svg>
                 {metroOn ? <BeatDots beats={cfg.beats} /> : <span>Metrônomo</span>}
               </button>
-              <div className="seg3 inrow looper" role="group" aria-label="Gravador de uma pista">
-                <button className={looper.state === 'rec' || looper.state === 'count' ? 'on' : ''} aria-label="Gravar / parar gravação" onClick={recClick} title="Gravar o que você toca, com contagem de um compasso no metrônomo">
+              <div className="seg3 inrow looper" role="group" aria-label="Gravador de pistas">
+                <button className={looper.state === 'rec' || looper.state === 'count' ? 'on' : ''} aria-label="Gravar uma nova pista / parar gravação" onClick={recClick} title="Gravar uma nova pista, com contagem no metrônomo. As pistas já gravadas tocam junto.">
                   {looper.state === 'rec' || looper.state === 'count' ? '■' : '●'}
                 </button>
-                <button className={looper.state === 'play' ? 'on' : ''} disabled={!song.loop} aria-label="Tocar / parar a pista" onClick={loopPlay} title="Tocar a pista em loop com o timbre atual">
-                  {looper.state === 'play' ? '■' : '▶'}
+                <button className={looper.playing ? 'on' : ''} disabled={!trackList.length} aria-label="Tocar / parar as pistas" onClick={loopPlay} title="Tocar todas as pistas em loop">
+                  {looper.playing ? '■' : '▶'}
                 </button>
-                <button disabled={!song.loop} aria-label="Apagar a pista" onClick={loopClear} title={song.loop ? `Apagar a pista (${song.loop.bars} compassos)` : 'Apagar a pista gravada'}>
-                  ✕
+                <button aria-label="Pistas gravadas: volume, mudo e quantização" onClick={() => setTracksOpen(true)} title={`Pistas gravadas (${trackList.length} de ${MAX_TRACKS})`}>
+                  ≡{trackList.length > 0 ? trackList.length : ''}
                 </button>
               </div>
               <div className="seg3 inrow" title="De que lado sai o clique do metrônomo: E = esquerdo, C = centro, D = direito" role="radiogroup" aria-label="Lado de saída do clique">
@@ -1832,6 +1843,7 @@ export default function App() {
           onClose={() => setZonesOpen(false)}
         />
       )}
+      {tracksOpen && <TracksSheet tracks={trackList} playing={looper.playing} recording={looper.state !== 'idle'} onClose={() => setTracksOpen(false)} onEdit={editTrack} onDelete={delTrack} onRec={recClick} onPlay={loopPlay} />}
       {pickerFor !== null && <Picker padMode={pickerFor === 'pad'} onPick={pickTimbre} onClose={() => setPickerFor(null)} />}
     </div>
   )

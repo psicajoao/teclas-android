@@ -1,8 +1,8 @@
 import type { Layer, Section } from './rig'
 import { LAYER_COUNT } from './rig'
-import type { LoopTrack } from './looper'
+import type { LoopTrack, Track } from './looper'
 
-export type Song = { id?: string; name: string; fade: number; split: number; sections: Section[]; key?: number | null; bpm?: number; transpose?: number; loop?: LoopTrack | null }
+export type Song = { id?: string; name: string; fade: number; split: number; sections: Section[]; key?: number | null; bpm?: number; transpose?: number; loop?: LoopTrack | null; tracks?: Track[] }
 /** Lista de músicas para um culto/evento: guarda só as ordens das músicas da biblioteca. */
 export type Setlist = { id: string; name: string; date?: string; ids: string[] }
 export const uid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4)
