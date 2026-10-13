@@ -577,6 +577,10 @@ export default function App() {
   const [slPage, setSlPage] = useState(false)
   const [secIdx, setSecIdx] = useState(0)
   const [secMenu, setSecMenu] = useState<number | null>(null)
+  const [clip, setClip] = useState<Layer[] | null>(() => {
+    try { return JSON.parse(localStorage.getItem('palco-keys.clip') || 'null') } catch { return null }
+  })
+  const [clipMsg, setClipMsg] = useState('')
   const [chMenu, setChMenu] = useState<number | null>(null)
   const [chMode, setChMode] = useState<'insert' | 'swap'>('insert')
   const [chAll, setChAll] = useState(true)
@@ -1101,6 +1105,20 @@ export default function App() {
     pressTimer.current = null
   }
 
+  const copyTimbres = (i: number) => {
+    const c = JSON.parse(JSON.stringify(song.sections[i].layers)) as Layer[]
+    setClip(c)
+    try { localStorage.setItem('palco-keys.clip', JSON.stringify(c)) } catch { /* sem armazenamento */ }
+    setClipMsg(`Copiado: ${c.filter((l) => l.timbre).length} timbres de "${song.sections[i].name || 'Seção ' + (i + 1)}".`)
+  }
+  const pasteTimbres = (to: number | 'all') => {
+    if (!clip) return
+    const fresh = () => JSON.parse(JSON.stringify(clip)) as Layer[]
+    updateSong((s) => ({ ...s, sections: s.sections.map((sec, k) => (to === 'all' || k === to ? { ...sec, layers: fresh() } : sec)) }))
+    if (ready && (to === 'all' || to === secI)) rig.apply(fresh(), 0)
+    setClipMsg(to === 'all' ? 'Colado em todas as partes.' : `Colado em "${song.sections[to].name || 'Seção ' + (to + 1)}".`)
+  }
+
   const renameSection = (i: number, name: string) =>
     updateSong((s) => ({ ...s, sections: s.sections.map((sec, k) => (k === i ? { ...sec, name } : sec)) }))
 
@@ -1344,6 +1362,18 @@ export default function App() {
                 ))}
               </select>
             </label>
+            <div className="secmenu-row">
+              <button className="ghost" onClick={() => copyTimbres(secMenu)}>
+                Copiar timbres desta parte
+              </button>
+              <button className="ghost" disabled={!clip} onClick={() => pasteTimbres(secMenu)}>
+                Colar timbres aqui
+              </button>
+            </div>
+            <button className="ghost" disabled={!clip || song.sections.length < 2} onClick={() => pasteTimbres('all')}>
+              Colar em todas as partes
+            </button>
+            {clipMsg && <p className="set-note" role="status">{clipMsg}</p>}
             <div className="secmenu-row">
               <button className="ghost" disabled={secMenu === 0} onClick={() => moveSection(secMenu, -1)}>
                 ◀ Mover para a esquerda
