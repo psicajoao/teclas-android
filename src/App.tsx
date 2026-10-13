@@ -596,6 +596,7 @@ export default function App() {
   const [error, setError] = useState('')
   const [midiNote, setMidiNote] = useState('')
   const [midiTest, setMidiTest] = useState(false)
+  const inputsKey = useRef('')
   const [midiSupported] = useState(() => 'requestMIDIAccess' in navigator)
   const [inputs, setInputs] = useState<{ id: string; name: string }[]>([])
   const [volume, setVolume] = useState(100)
@@ -819,12 +820,12 @@ export default function App() {
       const list: { id: string; name: string }[] = []
       connectedIds.clear()
       access.inputs.forEach((input) => {
-        input.onmidimessage = onMidi
-        try { void (input as MIDIInput & { open?: () => Promise<unknown> }).open?.()?.catch?.(() => {}) } catch { /* já aberto */ }
+        if (input.onmidimessage !== onMidi) input.onmidimessage = onMidi
         connectedIds.add(input.id)
         list.push({ id: input.id, name: input.name || 'Controlador MIDI' })
       })
-      setInputs(list)
+      const key = list.map((i) => i.id + i.name).join('|')
+      if (key !== inputsKey.current) { inputsKey.current = key; setInputs(list) }
     },
     [onMidi],
   )
@@ -852,13 +853,9 @@ export default function App() {
           accessRef.current = access
           bindInputs(access)
           access.onstatechange = () => bindInputs(access)
-          // alguns navegadores (ex.: Web MIDI Browser no iPad) só listam o teclado depois de alguns segundos
-          let tries = 0
-          const poll = window.setInterval(() => {
-            tries++
-            bindInputs(access)
-            if (access.inputs.size > 0 || tries >= 15) window.clearInterval(poll)
-          }, 1000)
+          // alguns navegadores só listam o teclado alguns segundos depois: duas checagens extras, sem repetir em laço
+          window.setTimeout(() => bindInputs(access), 3000)
+          window.setTimeout(() => bindInputs(access), 8000)
         } catch {
           setMidiNote('O MIDI foi bloqueado neste navegador. Abra no Chrome e permita o acesso ao MIDI. Dá para tocar pelo teclado da tela.')
         }

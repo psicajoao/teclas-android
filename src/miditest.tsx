@@ -14,8 +14,7 @@ export default function MidiTest({ onClose }: { onClose: () => void }) {
     const ins: string[] = []
     a.inputs.forEach((i) => {
       ins.push(`${i.name ?? '?'} (${i.state}/${i.connection})`)
-      i.onmidimessage = (e) => { setCount((c) => c + 1); setLast(Array.from(e.data ?? []).join(' ')) }
-      try { void (i as MIDIInput & { open?: () => Promise<unknown> }).open?.()?.catch?.(() => {}) } catch { /* ok */ }
+      if (!i.onmidimessage) i.onmidimessage = (e) => { setCount((c) => c + 1); setLast(Array.from(e.data ?? []).join(' ')) }
     })
     const outs: string[] = []
     a.outputs.forEach((o) => outs.push(o.name ?? '?'))
@@ -29,12 +28,11 @@ export default function MidiTest({ onClose }: { onClose: () => void }) {
     navigator.requestMIDIAccess().then((a) => {
       ref.current = a
       add('acesso MIDI concedido')
-      a.onstatechange = (e) => { add(`mudança: ${(e as MIDIConnectionEvent).port?.name ?? '?'} ${(e as MIDIConnectionEvent).port?.state ?? ''}`); scan() }
+      a.onstatechange = (e) => { const p = (e as MIDIConnectionEvent).port; if (p) add(`mudança: ${p.name ?? '?'} ${p.state}/${p.connection}`) }
       scan()
-      let n = 0
-      timer = window.setInterval(() => { scan(); if (++n >= 6) window.clearInterval(timer) }, 2000)
+      timer = window.setTimeout(scan, 3000)
     }).catch((err) => add('ERRO: ' + (err instanceof Error ? err.message : String(err))))
-    return () => window.clearInterval(timer)
+    return () => window.clearTimeout(timer)
   }, [])
 
   return (
