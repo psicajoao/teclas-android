@@ -139,7 +139,14 @@ export class Engine {
         data = all.buffer
       } else data = await res.arrayBuffer()
       this.onStage?.('Preparando sons…')
-      await synth.soundBankManager.addSoundBank(data, 'gm')
+      // Alguns navegadores (WebView no iPad) deixam o áudio suspenso e a preparação não anda: insiste em ligar e mostra o estado.
+      const t0 = performance.now()
+      const tick = setInterval(() => {
+        void ctx.resume().catch(() => {})
+        const s = Math.round((performance.now() - t0) / 1000)
+        this.onStage?.(s < 8 ? 'Preparando sons…' : `Preparando sons… ${s}s (áudio: ${ctx.state}${ctx.state !== 'running' ? ' — toque na tela' : ''})`)
+      }, 1000)
+      try { await synth.soundBankManager.addSoundBank(data, 'gm') } finally { clearInterval(tick) }
     }
     await synth.isReady
     synth.setSystemParameter('reverbGain', 2.2)
