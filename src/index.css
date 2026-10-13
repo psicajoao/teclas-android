@@ -1262,3 +1262,9 @@ h1 span { color: var(--cyan); text-shadow: 0 0 16px #00e5ff77; }
 @media (orientation: landscape) and (max-height: 480px) {
   .fit .mix .fader, .fit .padband .padfader .fader, .fit .padfader .fader { width: 24px !important; }
 }
+
+/* cabeça sempre inteira dentro do trilho; trilho e cabeça com o mesmo arredondamento */
+.fader { border-radius: 9px; }
+.fader .cap { transform: none; border-radius: 6px; }
+.hfader { border-radius: 9px; }
+.hfader .cap { margin-left: 0; border-radius: 6px; }

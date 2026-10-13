@@ -66,7 +66,7 @@ function Fader({ value, onChange, disabled }: { value: number; onChange: (v: num
   const ref = useRef<HTMLDivElement>(null)
   const set = (e: React.PointerEvent) => {
     const r = ref.current!.getBoundingClientRect()
-    onChange(clamp127(((r.bottom - e.clientY) / r.height) * 127))
+    onChange(clamp127(((r.bottom - 13 - e.clientY) / Math.max(1, r.height - 26)) * 127))
   }
   return (
     <div
@@ -92,8 +92,8 @@ function Fader({ value, onChange, disabled }: { value: number; onChange: (v: num
         if (e.key === 'ArrowDown') onChange(clamp127(value - 4))
       }}
     >
-      <div className="fill" style={{ height: `${(value / 127) * 100}%` }} />
-      <div className="cap" style={{ bottom: `${(value / 127) * 100}%` }} />
+      <div className="fill" style={{ height: `calc(13px + (100% - 26px) * ${value / 127})` }} />
+      <div className="cap" style={{ bottom: `calc((100% - 26px) * ${value / 127})` }} />
     </div>
   )
 }
@@ -102,7 +102,7 @@ function HFader({ value, onChange, label, width = 220 }: { value: number; onChan
   const ref = useRef<HTMLDivElement>(null)
   const set = (e: React.PointerEvent) => {
     const r = ref.current!.getBoundingClientRect()
-    onChange(clamp127(((e.clientX - r.left) / r.width) * 127))
+    onChange(clamp127(((e.clientX - r.left - 13) / Math.max(1, r.width - 26)) * 127))
   }
   return (
     <div
@@ -125,8 +125,8 @@ function HFader({ value, onChange, label, width = 220 }: { value: number; onChan
         if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') onChange(clamp127(value - 4))
       }}
     >
-      <div className="fill" style={{ width: `${(value / 127) * 100}%` }} />
-      <div className="cap" style={{ left: `${(value / 127) * 100}%` }} />
+      <div className="fill" style={{ width: `calc(13px + (100% - 26px) * ${value / 127})` }} />
+      <div className="cap" style={{ left: `calc((100% - 26px) * ${value / 127})` }} />
     </div>
   )
 }
