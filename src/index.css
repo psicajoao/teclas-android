@@ -968,16 +968,7 @@ h1 span { color: var(--cyan); text-shadow: 0 0 16px #00e5ff77; }
 .upbox progress { width: 100%; height: 10px; accent-color: var(--cyan); }
 .upbox small { color: var(--muted); }
 
-/* Celular em pé: pede para girar (o app é feito para a tela deitada) */
-@media (orientation: portrait) and (max-width: 700px) {
-  body::before {
-    content: '↻\A Gire o celular\A para o modo paisagem';
-    white-space: pre;
-    position: fixed; inset: 0; z-index: 2147483647;
-    display: flex; align-items: center; justify-content: center; text-align: center;
-    background: #0a0612; color: #fff; font: 600 1.25rem/1.6 system-ui, sans-serif;
-  }
-}
+
 
 /* Celular deitado: barra do topo rola de lado em vez de amontoar; controles mais baixos */
 @media (orientation: landscape) and (max-height: 480px) {
@@ -1213,4 +1204,20 @@ h1 span { color: var(--cyan); text-shadow: 0 0 16px #00e5ff77; }
   .fit .topbar .bpm-in { font-size: 1.15rem; }
   .fit .topbar .tempo small { font-size: .62rem; }
   .fit .topbar .stepper button { font-size: 1.05rem; }
+}
+
+/* ===== celular deitado v6: pad 4x3, nome do app, seções mais altas, topo à direita ===== */
+@media (orientation: landscape) and (max-height: 480px) {
+  .fit .rig { grid-template-columns: 200px minmax(0, 1fr); }
+  .fit .leftcol { grid-template-columns: 80px minmax(0, 1fr); }
+  .fit .leftcol .padband { align-self: start; padding: 3px; }
+  .fit .padband .tones { grid-template-columns: repeat(4, 1fr); gap: 2px; }
+  .fit .padband .tone { min-height: 24px; font-size: .85rem; }
+  .fit .padband > .pad-head .power { width: 20px; height: 20px; min-width: 20px; }
+  .fit .padband .padfader .fader { height: 34px; width: 24px; }
+  .fit .sec { min-height: 36px; font-size: .8rem; }
+  .fit .qbtn { min-height: 36px; width: 30px; min-width: 30px; }
+  .fit .topbar h1 { display: block; font-size: .95rem; margin: 0 4px 0 2px; white-space: nowrap; flex: none; align-self: center; }
+  .fit .topbar .tempo { margin-left: auto; }
+  .fit .topbar .panic { margin-left: 0; right: 34px; }
 }
