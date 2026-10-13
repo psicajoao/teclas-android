@@ -364,6 +364,7 @@ function Picker({ onPick, onClose, padMode }: { onPick: (id: string | null) => v
   const groups = [CUSTOM_GROUP, ...(padMode ? GROUPS.filter((g) => g !== 'Bateria') : GROUPS)]
   const [group, setGroup] = useState<string>(hasCustom ? CUSTOM_GROUP : 'Favoritos')
   const [q, setQ] = useState('')
+  const [bank, setBank] = useState<number | null>(null)
   const [edit, setEdit] = useState(false)
   const [hidden, setHid] = useState(getHidden)
   const [busy, setBusy] = useState(false)
@@ -375,11 +376,12 @@ function Picker({ onPick, onClose, padMode }: { onPick: (id: string | null) => v
     if (padMode) list = list.filter((t) => !t.drum)
     if (isCustom) {
       list = list.filter((t) => !hidden.has(t.id))
+      if (bank !== null && !q.trim()) list = list.filter((t) => slotOf(t.id) === bank)
       if (q.trim()) list = list.filter((t) => (t.name + ' ' + (t.src ?? '')).toLowerCase().includes(q.trim().toLowerCase()))
     }
     return list
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [group, q, padMode, ver, hidden])
+  }, [group, q, padMode, ver, hidden, bank])
   const [lib, setLib] = useState(false)
   const reload = (m: string) => {
     setMsg(m)
@@ -417,6 +419,11 @@ function Picker({ onPick, onClose, padMode }: { onPick: (id: string | null) => v
       setHid(h)
     }
   }
+  const bankLabel = (slot: number) => (listBanks().find((b) => b.slot === slot)?.name ?? 'Banco ' + slot).replace(/\.sf[23]$/i, '').replace(/_/g, ' ')
+  const folders = listBanks()
+    .map((b) => ({ slot: b.slot, n: TIMBRES.filter((t) => t.group === CUSTOM_GROUP && slotOf(t.id) === b.slot && !hidden.has(t.id)).length }))
+    .filter((f) => f.n > 0)
+  const showFolders = isCustom && bank === null && !q.trim() && folders.length > 0
   const hiddenCount = TIMBRES.filter((t) => t.group === CUSTOM_GROUP && hidden.has(t.id)).length
   return (
     <div className="overlay" onClick={onClose}>
@@ -514,14 +521,30 @@ function Picker({ onPick, onClose, padMode }: { onPick: (id: string | null) => v
             </>
           )
         })()}
+        {isCustom && bank !== null && !q.trim() && (
+          <div className="pick-tools">
+            <button className="ghost" onClick={() => setBank(null)}>‹ Bancos</button>
+            <b style={{ flex: 1 }}>{bankLabel(bank)}</b>
+          </div>
+        )}
+        {showFolders && (
+          <div className="cards">
+            {folders.map((f) => (
+              <button key={f.slot} className="card" onClick={() => { setBank(f.slot); setEdit(false) }}>
+                <small>{f.n} sons</small>
+                {bankLabel(f.slot)}
+              </button>
+            ))}
+          </div>
+        )}
         <div className="cards">
-          {shown.map((t) => (
+          {!showFolders && shown.map((t) => (
             <button key={t.id} className={'card' + (isCustom && edit ? ' edit' : '')} disabled={busy} onClick={() => (isCustom && edit ? void removeSound(t) : onPick(t.id))}>
               <small>{t.drum ? 'Kit' : t.group === CUSTOM_GROUP ? (t.src ?? '') : t.program + 1}</small>
               {t.name}
             </button>
           ))}
-          {shown.length === 0 && (
+          {!showFolders && shown.length === 0 && (
             <p style={{ opacity: 0.6 }}>{isCustom ? 'Nenhum som seu ainda. Toque em ＋ Adicionar e escolha arquivos .sf2.' : 'Nenhum som encontrado.'}</p>
           )}
         </div>
