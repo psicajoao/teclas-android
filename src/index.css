@@ -1165,3 +1165,18 @@ h1 span { color: var(--cyan); text-shadow: 0 0 16px #00e5ff77; }
   .fit .wheel .grip { height: 12px; }
 }
 @media (orientation: landscape) and (max-height: 480px) { .fit .topbar .tempo { margin-left: 0; } }
+
+/* ===== celular deitado v4: metrônomo estreito, canais mais baixos, efeitos de volta ===== */
+@media (orientation: landscape) and (max-height: 480px) {
+  .fit .topbar .metrobtn { min-width: 0; width: 34px; padding: 0; margin-left: 0; }
+  .fit .rig { height: 188px; min-height: 0; }
+  .fit .mix { gap: 3px; align-items: stretch; }
+  .fit .mix .fader { width: 34px; min-width: 34px; flex: none; height: 100%; min-height: 0; }
+  .fit .mix .fxslots { display: flex; gap: 2px; flex: 1; min-width: 0; }
+  .fit .fxslot { border-radius: 5px; max-height: none; min-height: 0; }
+  .fit .fxpow { width: 12px; }
+  .fit .fxpow::after { width: 6px; height: 6px; margin: -3px 0 0 -3px; }
+  .fit .fxname { padding: 0 2px; }
+  .fit .fxname small { display: none; }
+  .fit .fxname b { font-size: .55rem; }
+}
