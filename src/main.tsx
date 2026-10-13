@@ -2,7 +2,7 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import '@fontsource-variable/bricolage-grotesque'
 import '@fontsource/righteous/latin-400.css'
-import App from './App'
+import Gate from './gate'
 
 /** Celular em pé: mostra o app já girado (dentro de um quadro deitado), sem pedir para virar o aparelho. */
 const portraitQuery = window.matchMedia('(orientation: portrait) and (max-width: 700px)')
@@ -25,7 +25,7 @@ if (rotated) {
 } else {
   createRoot(root).render(
     <StrictMode>
-      <App />
+      <Gate />
     </StrictMode>,
   )
 }

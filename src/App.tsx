@@ -1477,6 +1477,7 @@ export default function App() {
             {status === 'loading' ? (prog > 0 && prog < 1 ? `Baixando sons… ${Math.round(prog * 100)}%` : stage) : status === 'error' ? 'Tentar de novo' : 'Iniciar'}
           </button>
           <p className="hint">Toque em Iniciar para ligar o áudio e conectar o teclado MIDI.</p>
+          <button className="ghost" onClick={() => window.dispatchEvent(new Event('palco:welcome'))}>Ver boas-vindas</button>
           {error && <p className="error">{error}</p>}
           {!midiSupported && <p className="error">Este navegador não suporta MIDI. Use o Chrome.</p>}
         </section>
