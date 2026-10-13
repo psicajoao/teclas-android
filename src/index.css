@@ -1180,3 +1180,37 @@ h1 span { color: var(--cyan); text-shadow: 0 0 16px #00e5ff77; }
   .fit .fxname small { display: none; }
   .fit .fxname b { font-size: .55rem; }
 }
+
+/* ===== celular deitado v5: 4 canais, repertório visível, pad maior, topo à direita ===== */
+@media (orientation: landscape) and (max-height: 480px) {
+  .fit .rig { grid-template-columns: 214px minmax(0, 1fr); height: max(188px, calc(100dvh - 150px)); }
+  .fit .leftcol { display: grid; grid-template-columns: 80px minmax(0, 1fr); gap: 3px; overflow: hidden; }
+  .fit .leftcol .setlist { display: flex; flex-direction: column; grid-column: 1; grid-row: 1; min-height: 0; padding: 3px; border-radius: 10px; overflow: hidden; gap: 0; }
+  .fit .leftcol .setlist .sl-head { display: none; }
+  .fit .leftcol .setlist ol { flex: 1; min-height: 0; overflow-y: auto; gap: 2px; padding: 0; }
+  .fit .leftcol .setlist .grip { display: none; }
+  .fit .leftcol .setlist .sl-item { padding: 2px 3px; gap: 3px; border-radius: 6px; min-height: 24px; }
+  .fit .leftcol .setlist .sl-item .n { width: 10px; font-size: .6rem; }
+  .fit .leftcol .setlist .sl-item .t small, .fit .leftcol .setlist .sl-item .k { display: none; }
+  .fit .leftcol .setlist .sl-item b { font-size: .68rem; white-space: normal; line-height: 1.1; -webkit-line-clamp: 2; }
+  .fit .leftcol .padband { grid-column: 2; grid-row: 1; flex: none; min-height: 0; padding: 3px; }
+  .fit .padband .tones { grid-template-columns: repeat(3, 1fr); gap: 3px; }
+  .fit .padband .tone { min-height: 28px; font-size: 1rem; font-weight: 700; }
+  .fit .padband > .pad-head .power { width: 22px; height: 22px; min-width: 22px; }
+  .fit .padband .padfader .fader { width: 28px; height: 40px; }
+
+  /* 4 canais visíveis; o resto rola */
+  .fit .strips > .strip { flex-basis: calc((100% - 18px) / 4); }
+  .fit .strips { scroll-snap-type: x mandatory; }
+  .fit .strips > .strip { scroll-snap-align: start; }
+
+  /* topo: PANIC e menu bem à direita, fonte um pouco maior */
+  .fit .topbar .panic { margin-left: auto; }
+  .fit .topbar .panic, .fit .topbar .hamb { right: 0; }
+  .fit .topbar .panic { right: 34px; }
+  .fit .topbar .ctl select, .fit .topbar .stepper, .fit .topbar .ctl .ghost, .fit .topbar .metrobtn { height: 24px; font-size: .92rem; }
+  .fit .topbar .seg3 button { height: 22px; font-size: .8rem; }
+  .fit .topbar .bpm-in { font-size: 1.15rem; }
+  .fit .topbar .tempo small { font-size: .62rem; }
+  .fit .topbar .stepper button { font-size: 1.05rem; }
+}
