@@ -6,6 +6,7 @@ import type { Layer } from './rig'
 import { metro } from './metronome'
 import { bendValue, modValue, beatValue, rotorValue, useValue } from './signal'
 import { parseMidi, noteName, DRUM_NAMES } from './midi'
+import { Library } from './library'
 import { addBanks, removeBank, getHidden, setHidden, slotOf, listBanks, MAX_BANKS, bankInfo } from './bank'
 import type { Timbre } from './timbres'
 import { customStatus } from './bank'
@@ -379,6 +380,7 @@ function Picker({ onPick, onClose, padMode }: { onPick: (id: string | null) => v
     return list
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [group, q, padMode, ver, hidden])
+  const [lib, setLib] = useState(false)
   const reload = (m: string) => {
     setMsg(m)
     setTimeout(() => location.reload(), 800)
@@ -450,6 +452,7 @@ function Picker({ onPick, onClose, padMode }: { onPick: (id: string | null) => v
                 <input type="file" accept=".sf2,.sf3" multiple hidden disabled={busy} onChange={(e) => void add(e.target.files)} />
               </label>
             )}
+            <button className="ghost" disabled={busy} onClick={() => setLib(true)}>Biblioteca</button>
             {hasCustom && (
               <button className={'ghost' + (edit ? ' on' : '')} onClick={() => setEdit(!edit)}>
                 {edit ? 'Concluir' : 'Editar'}
@@ -457,6 +460,7 @@ function Picker({ onPick, onClose, padMode }: { onPick: (id: string | null) => v
             )}
           </div>
         )}
+        {lib && <Library onClose={() => setLib(false)} onDone={reload} />}
         {isCustom && edit && (
           <p className="pick-hint">
             Toque no som que quer tirar da lista.
