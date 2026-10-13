@@ -1,23 +1,163 @@
-<!doctype html>
-<html lang="pt-BR">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/png" sizes="32x32" href="./favicon-32.png" />
-    <link rel="icon" type="image/png" sizes="64x64" href="./favicon-64.png" />
-    <link rel="shortcut icon" href="./favicon.ico" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-    <link rel="manifest" href="./manifest.webmanifest" />
-    <link rel="apple-touch-icon" href="./apple-touch-icon.png" />
-    <meta name="theme-color" content="#0a0612" />
-    <meta name="mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <meta name="apple-mobile-web-app-title" content="Palco Keys" />
-    <title>Palco Keys</title>
-    <script type="module" crossorigin src="./assets/index-Cbemb8TO.js"></script>
-    <link rel="stylesheet" crossorigin href="./assets/index-D22DVwis.css">
-  </head>
-  <body>
-    <div id="root"></div>
-  </body>
-</html>
+<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#0b0f14"><meta name="description" content="Palco Keys: teclado ao vivo com camadas, divisões e pad contínuo. Funciona em iPad, iPhone, Android e computador."><link rel="icon" href="favicon-32.png"><link rel="apple-touch-icon" href="apple-touch-icon.png"><title>Palco Keys</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&display=swap" rel="stylesheet">
+<style>
+/* Palco de madrugada: fundo quase preto arroxeado, ciano e violeta do próprio app. Tipografia grande, telas reais como protagonistas. */
+:root{--bg:#050308;--bg2:#0d0716;--ink:#f3eefb;--muted:#a496bd;--line:#2a1d3f;--violet:#b026ff;--cyan:#00f0ff;--pink:#ff3d9a;--amber:#ffb23d;color-scheme:dark;
+ --f:'Bricolage Grotesque',system-ui,-apple-system,'Segoe UI',sans-serif}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{background:radial-gradient(1200px 600px at 50% -200px,#1d0e36 0%,var(--bg) 70%) no-repeat,var(--bg);color:var(--ink);font-family:var(--f);font-weight:400;line-height:1.55;padding-inline:max(16px,env(safe-area-inset-left));font-size:17px}
+a{color:inherit}
+.wrap{max-width:1120px;margin-inline:auto}
+nav{display:flex;align-items:center;justify-content:space-between;gap:16px;padding-block:20px}
+.logo{font-weight:800;font-size:1.35rem;letter-spacing:-.01em;text-decoration:none}
+.logo b{color:var(--cyan);font-weight:800}
+.btn{display:inline-flex;align-items:center;gap:8px;font:600 1rem var(--f);text-decoration:none;border-radius:12px;padding:13px 22px;border:1px solid var(--line);background:#120a1e;color:var(--ink);transition:transform .15s,border-color .15s}
+.btn:hover{border-color:var(--cyan);transform:translateY(-1px)}
+.btn.main{background:linear-gradient(135deg,#7a2cff,#b026ff 55%,#00bcd4);border-color:transparent;color:#fff;box-shadow:0 10px 34px -10px #b026ffaa}
+.btn.main:hover{border-color:transparent;filter:brightness(1.1)}
+:focus-visible{outline:2px solid var(--cyan);outline-offset:3px}
+.hero{padding-block:clamp(28px,6vw,72px) 0;text-align:left}
+.hero h1{font-size:clamp(2.5rem,7.4vw,5.6rem);line-height:.98;letter-spacing:-.035em;font-weight:800;margin:0 0 22px;max-width:15ch;text-wrap:balance}
+.hero h1 em{font-style:normal;color:var(--cyan)}
+.hero p{max-width:52ch;color:var(--muted);font-size:1.18rem;margin:0 0 30px}
+.cta{display:flex;flex-wrap:wrap;gap:12px;align-items:center}
+.cta small{color:var(--muted)}
+.stage{margin-top:clamp(36px,6vw,64px);position:relative}
+.stage::before{content:'';position:absolute;inset:8% 6% -6%;background:radial-gradient(closest-side,#b026ff55,transparent);filter:blur(40px);z-index:0}
+.tablet{position:relative;z-index:1;border-radius:26px;padding:10px;background:#15101f;border:1px solid #3a2a55;box-shadow:0 40px 80px -30px #000,0 0 0 1px #000}
+.tablet img{display:block;width:100%;height:auto;border-radius:18px}
+section{padding-block:clamp(56px,9vw,110px) 0}
+.eyebrow{font-weight:600;font-size:.82rem;letter-spacing:.14em;text-transform:uppercase;color:var(--cyan);margin:0 0 14px}
+h2{font-size:clamp(1.9rem,4.6vw,3.2rem);line-height:1.05;letter-spacing:-.025em;font-weight:800;margin:0 0 18px;max-width:20ch;text-wrap:balance}
+.lead{color:var(--muted);max-width:56ch;margin:0 0 36px;font-size:1.1rem}
+.feat{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:14px}
+.feat article{background:linear-gradient(180deg,#120a1e,#0a0612);border:1px solid var(--line);border-radius:16px;padding:22px 22px 24px;min-width:0}
+.feat h3{margin:0 0 8px;font-size:1.2rem;font-weight:700;letter-spacing:-.01em}
+.feat p{margin:0;color:var(--muted);font-size:.98rem}
+.feat article.big{grid-column:1/-1;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:22px;align-items:center;border-color:#4a2a78}
+.dots{display:flex;gap:7px;margin-bottom:14px}.dots i{width:12px;height:12px;border-radius:50%;background:var(--c);box-shadow:0 0 12px var(--c)}
+.split{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr));gap:clamp(24px,5vw,56px);align-items:center}
+.split>*{min-width:0}
+.shot{border-radius:16px;border:1px solid #3a2a55;overflow:hidden;box-shadow:0 30px 60px -28px #000;background:#000}
+.shot img{display:block;width:100%;height:auto}
+.phone{border-radius:30px;padding:9px;background:#15101f;border:1px solid #3a2a55;box-shadow:0 30px 60px -28px #000}
+.phone img{display:block;width:100%;height:auto;border-radius:22px}
+.list{list-style:none;margin:0;padding:0;display:grid;gap:12px}
+.list li{padding-left:28px;position:relative;color:var(--muted)}
+.list li::before{content:'';position:absolute;left:0;top:.6em;width:14px;height:3px;border-radius:2px;background:var(--cyan)}
+.list b{color:var(--ink);font-weight:600}
+.inst{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:14px;counter-reset:s}
+.inst article{border:1px solid var(--line);border-radius:16px;padding:22px;background:#0b0613;min-width:0}
+.inst h3{margin:0 0 14px;font-size:1.15rem}
+.inst ol{margin:0;padding-left:20px;color:var(--muted);display:grid;gap:8px}
+.inst ol b{color:var(--ink);font-weight:600}
+.note{margin-top:18px;color:var(--muted);font-size:.95rem;max-width:70ch}
+.lic{border:1px solid var(--line);border-radius:16px;overflow:hidden}
+.lic div{display:grid;grid-template-columns:1.4fr 1fr 1fr .6fr;gap:12px;padding:14px 18px;border-top:1px solid var(--line);font-size:.96rem}
+.lic div:first-child{border-top:0;background:#120a1e;color:var(--muted);font-size:.8rem;letter-spacing:.1em;text-transform:uppercase;font-weight:600}
+.lic span{min-width:0;overflow-wrap:anywhere}.lic span:last-child{font-variant-numeric:tabular-nums}
+footer{margin-top:clamp(64px,10vw,120px);border-top:1px solid var(--line);padding-block:32px 48px;color:var(--muted);font-size:.92rem;display:flex;flex-wrap:wrap;gap:12px 32px;justify-content:space-between}
+footer p{margin:0;max-width:60ch}
+@media (max-width:640px){.lic div{grid-template-columns:1fr 1fr}.lic div span:nth-child(3){display:none}.lic div:first-child span:nth-child(3){display:none}}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}.btn{transition:none}}
+</style></head><body>
+
+<div class="wrap">
+<nav>
+  <a class="logo" href="#top">Palco <b>Keys</b></a>
+  <a class="btn" href="app/">Abrir o app</a>
+</nav>
+
+<header class="hero" id="top">
+  <h1>Seu teclado ao vivo, <em>pronto no palco.</em></h1>
+  <p>Camadas de timbres, seções por música, pad contínuo e metrônomo. Tudo numa tela feita para tocar, no iPad, no tablet, no computador e no celular.</p>
+  <div class="cta">
+    <a class="btn main" href="app/">Abrir o Palco Keys</a>
+    <a class="btn" href="#instalar">Como instalar</a>
+  </div>
+  <div class="stage"><div class="tablet"><img src="img/tablet.jpg" alt="Tela principal do Palco Keys no tablet: quatro camadas de timbres com faders, pad contínuo, seções Intro, Verso, Refrão, Ponte e Final e teclado."></div></div>
+</header>
+
+<section id="recursos">
+  <p class="eyebrow">O que o app faz</p>
+  <h2>Feito para quem toca, não para quem programa.</h2>
+  <p class="lead">Cada música guarda seus timbres e volumes. Na hora de tocar, você troca de seção com um toque.</p>
+  <div class="feat">
+    <article class="big">
+      <div>
+        <div class="dots"><i style="--c:#00f0ff"></i><i style="--c:#b026ff"></i><i style="--c:#ff3d9a"></i><i style="--c:#ffb23d"></i><i style="--c:#3dff9a"></i></div>
+        <h3>Camadas e seções</h3>
+        <p>Empilhe até 10 timbres por seção, cada um com seu fader de volume e sua região do teclado. Intro, Verso, Refrão, Ponte e Final guardam o som daquele momento, com troca instantânea ou em transição suave.</p>
+      </div>
+      <div class="shot"><img src="img/picker.jpg" alt="Seletor de timbres com as categorias General MIDI e Meus bancos."></div>
+    </article>
+    <article><h3>Pad contínuo nos 12 tons</h3><p>Um tapete de som para sustentar a música, com controles de brilho e cintilação.</p></article>
+    <article><h3>Metrônomo e gravador</h3><p>Toque ao lado do clique, com compasso e andamento. Grave uma pista simples para ouvir o timbre na caixa de som sem estar tocando.</p></article>
+    <article><h3>Repertório</h3><p>Monte a lista de músicas do culto ou do show, com transposição por música. Exporte um backup e leve para outro aparelho.</p></article>
+    <article><h3>Funciona sem internet</h3><p>Depois de aberto, o app e os sons ficam guardados no aparelho. Sem depender de sinal no local do evento.</p></article>
+    <article><h3>Seu controlador MIDI</h3><p>Conecte o teclado por USB ou use o teclado da tela. Pitch, modulação e sustain respondem como você espera.</p></article>
+    <article><h3>128 timbres General MIDI</h3><p>Pianos, órgãos, cordas, metais, baixos, bateria e mais, já incluídos. Você escolhe e toca.</p></article>
+  </div>
+</section>
+
+<section>
+  <div class="split">
+    <div>
+      <p class="eyebrow">No celular também</p>
+      <h2>Até no iPhone, deitado.</h2>
+      <p class="lead">A tela se reorganiza para o modo paisagem: canais compactos, pad, seções e teclado, tudo à vista sem rolar.</p>
+      <ul class="list">
+        <li><b>Tela fixa.</b> Nada desliza enquanto você toca.</li>
+        <li><b>Faders estreitos</b> para caber quatro canais lado a lado.</li>
+        <li><b>Botão de pânico</b> sempre à mão para calar tudo.</li>
+      </ul>
+    </div>
+    <div class="phone"><img src="img/phone.jpg" alt="Palco Keys no iPhone em modo paisagem, com quatro canais, pad e teclado."></div>
+  </div>
+</section>
+
+<section>
+  <div class="split">
+    <div class="shot"><img src="img/library.jpg" alt="Biblioteca de sons com SoundFonts de licença livre para baixar."></div>
+    <div>
+      <p class="eyebrow">Biblioteca de sons</p>
+      <h2>Mais timbres, só se você quiser.</h2>
+      <p class="lead">O Palco Keys já vem com os sons General MIDI. Na Biblioteca você baixa SoundFonts de licença livre, e eles ficam organizados em pastas, um banco por vez. Você também pode adicionar seus próprios arquivos .sf2 e .sf3.</p>
+      <ul class="list">
+        <li><b>Cada um baixa o que quiser.</b> Nada é instalado sem você pedir.</li>
+        <li><b>Licença à vista.</b> Autor, licença e tamanho em cada banco.</li>
+      </ul>
+    </div>
+  </div>
+  <div class="lic" style="margin-top:36px" role="table" aria-label="SoundFonts da Biblioteca">
+    <div role="row"><span>Banco</span><span>Autor</span><span>Licença</span><span>Tamanho</span></div>
+    <div role="row"><span>TimGM6mb</span><span>Tim Brechbill, David Bolton</span><span>GPL-2</span><span>6 MB</span></div>
+    <div role="row"><span>Fluid R3 Mono GM</span><span>Frank Wen, Michael Cowgill</span><span>MIT</span><span>24 MB</span></div>
+    <div role="row"><span>MuseScore General Lite</span><span>S. Christian Collins</span><span>MIT / CC0</span><span>40 MB</span></div>
+    <div role="row"><span>MuseScore General Full</span><span>S. Christian Collins</span><span>MIT / CC0</span><span>86 MB</span></div>
+  </div>
+  <p class="note">SoundFonts que você adicionar por conta própria são de sua responsabilidade. O Palco Keys não fornece nem responde por esses arquivos.</p>
+</section>
+
+<section id="instalar">
+  <p class="eyebrow">Instalar</p>
+  <h2>Sem loja. Abra o endereço e adicione à tela inicial.</h2>
+  <p class="lead">O Palco Keys é um app web: o ícone aparece como qualquer outro app e abre em tela cheia.</p>
+  <div class="inst">
+    <article><h3>iPad e iPhone</h3><ol><li>Abra o app no <b>Safari</b>.</li><li>Toque em <b>Compartilhar</b>.</li><li>Escolha <b>Adicionar à Tela de Início</b>.</li></ol></article>
+    <article><h3>Android</h3><ol><li>Abra o app no <b>Chrome</b>.</li><li>Toque nos três pontos.</li><li>Escolha <b>Instalar app</b>.</li></ol></article>
+    <article><h3>Windows e Mac</h3><ol><li>Abra o app no <b>Chrome</b> ou no <b>Edge</b>.</li><li>Clique no ícone de instalar na barra de endereço.</li><li>Confirme em <b>Instalar</b>.</li></ol></article>
+  </div>
+  <p class="note">Para usar um teclado MIDI no iPad ou no iPhone, abra o app em um navegador com suporte a Web MIDI, como o MIDIWeb Browser. O Safari e o Chrome do iOS não liberam o MIDI.</p>
+  <div class="cta" style="margin-top:28px"><a class="btn main" href="app/">Abrir o Palco Keys</a></div>
+</section>
+
+<footer>
+  <p><b>Palco Keys</b> · Teclado MIDI ao vivo com timbres, seções, pad e metrônomo.</p>
+  <p>Sons General MIDI: GeneralUser GS. Créditos e licenças dos bancos da Biblioteca ficam no próprio app.</p>
+</footer>
+</div>
+
+</body></html>
