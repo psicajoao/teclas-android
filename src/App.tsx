@@ -624,6 +624,7 @@ export default function App() {
   useEffect(() => save(songs, songIdx, setlists, activeSl), [songs, songIdx, setlists, activeSl])
   useEffect(() => savePad(cfg), [cfg])
   useEffect(() => pad.setTone(cfg.bright, cfg.shimmer), [cfg.bright, cfg.shimmer])
+  useEffect(() => pad.setHold(cfg.hold ?? 0), [cfg.hold])
   const stripsRef = useRef<HTMLElement>(null)
   const [page, setPage] = useState(0)
   const wide = useWide()
@@ -1615,6 +1616,17 @@ export default function App() {
                   {PAD_FADES.map((f) => (
                     <option key={f} value={f}>
                       {f} s
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="row" title="Para sons que vão sumindo sozinhos: o pad renova a nota de tempos em tempos, sem corte.">
+                Manter nota
+                <select value={cfg.hold ?? 0} onChange={(e) => setCfg({ ...cfg, hold: +e.target.value })}>
+                  <option value={0}>Desligado</option>
+                  {[6, 10, 15, 20, 30].map((f) => (
+                    <option key={f} value={f}>
+                      renovar a cada {f} s
                     </option>
                   ))}
                 </select>

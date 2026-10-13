@@ -662,6 +662,23 @@ class Pad {
   private shimmer = 0
   private timer: ReturnType<typeof setInterval> | null = null
   private finish: (() => void) | null = null
+  private holdSecs = 0
+  private renew: ReturnType<typeof setInterval> | null = null
+
+  /** Para timbres que vão sumindo sozinhos: a cada N segundos entra uma nota nova por crossfade (0 = desligado). */
+  setHold(secs: number) {
+    this.holdSecs = secs
+    this.armRenew()
+  }
+  private armRenew() {
+    if (this.renew) clearInterval(this.renew)
+    this.renew = null
+    if (this.holdSecs > 0 && this.key !== null) {
+      this.renew = setInterval(() => {
+        if (this.key !== null) this.play(this.key, Math.min(4, Math.max(1.5, this.holdSecs * 0.35)), true)
+      }, this.holdSecs * 1000)
+    }
+  }
 
   private level() {
     return clamp((this.vol * this.master) / 127)
@@ -756,6 +773,7 @@ class Pad {
     this.key = key
     this.cur = nw
     this.fade(nw, old, seconds)
+    this.armRenew()
   }
 
   stop(seconds: number) {
@@ -763,6 +781,7 @@ class Pad {
     if (this.finish) this.finish()
     const old = this.cur
     this.key = null
+    this.armRenew()
     this.fade(null, old, seconds)
   }
 
@@ -771,6 +790,7 @@ class Pad {
     this.timer = null
     this.finish = null
     this.key = null
+    this.armRenew()
     this.notes = [[], []]
     this.setGain(0, 0, true)
     this.setGain(1, 0, true)
