@@ -818,6 +818,7 @@ export default function App() {
       connectedIds.clear()
       access.inputs.forEach((input) => {
         input.onmidimessage = onMidi
+        try { void (input as MIDIInput & { open?: () => Promise<unknown> }).open?.()?.catch?.(() => {}) } catch { /* já aberto */ }
         connectedIds.add(input.id)
         list.push({ id: input.id, name: input.name || 'Controlador MIDI' })
       })
@@ -849,6 +850,13 @@ export default function App() {
           accessRef.current = access
           bindInputs(access)
           access.onstatechange = () => bindInputs(access)
+          // alguns navegadores (ex.: Web MIDI Browser no iPad) só listam o teclado depois de alguns segundos
+          let tries = 0
+          const poll = window.setInterval(() => {
+            tries++
+            bindInputs(access)
+            if (access.inputs.size > 0 || tries >= 15) window.clearInterval(poll)
+          }, 1000)
         } catch {
           setMidiNote('O MIDI foi bloqueado neste navegador. Abra no Chrome e permita o acesso ao MIDI. Dá para tocar pelo teclado da tela.')
         }
