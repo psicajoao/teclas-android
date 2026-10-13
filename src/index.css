@@ -1255,3 +1255,10 @@ h1 span { color: var(--cyan); text-shadow: 0 0 16px #00e5ff77; }
   .fit .keyboard, .fit .keyboard.tall { height: clamp(52px, 22vh, 84px); }
   .fit .wheel { height: clamp(52px, 22vh, 84px); }
 }
+
+/* faders verticais: todos iguais e ~40% mais estreitos */
+.fader { width: 34px; }
+.fader .cap { left: 2px; right: 2px; }
+@media (orientation: landscape) and (max-height: 480px) {
+  .fit .mix .fader, .fit .padband .padfader .fader, .fit .padfader .fader { width: 24px !important; }
+}
