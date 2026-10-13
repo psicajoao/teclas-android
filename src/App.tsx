@@ -1629,7 +1629,7 @@ export default function App() {
                         />
                         <button className="lname" onClick={() => setPickerFor(i)}>
                           <small>{t ? (t.drum ? 'Kit de bateria' : t.group) : `Camada ${i + 1}`}</small>
-                          {t ? t.name : 'Escolher timbre'}
+                          <span className="lnm">{t ? t.name : 'Escolher timbre'}</span>
                         </button>
                         <button className={'sndbtn' + (hasSnd(l) ? ' on' : '')} disabled={!t} onClick={() => setSndEdit(i)} aria-label="Compressor, equalizador e ajustes deste som" title="Compressor, equalizador e ajustes">
                           <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M5 4v16M12 4v16M19 4v16" /><circle cx="5" cy="9" r="2.2" fill="currentColor" /><circle cx="12" cy="15" r="2.2" fill="currentColor" /><circle cx="19" cy="8" r="2.2" fill="currentColor" /></svg>
