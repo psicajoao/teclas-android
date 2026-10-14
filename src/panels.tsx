@@ -54,17 +54,29 @@ function Backup() {
     setTimeout(() => URL.revokeObjectURL(a.href), 5000)
     setMsg('Backup salvo na pasta de Downloads.')
   }
+  const [pend, setPend] = useState<Record<string, string> | null>(null)
   const importar = async (f: File | undefined) => {
     if (!f) return
+    setPend(null)
     try {
       const j = JSON.parse(await f.text())
       if (j.app !== 'palco-keys' || !j.dados) throw new Error('arquivo inválido')
-      if (!window.confirm('Isto substitui as músicas, setlists e ajustes deste aparelho pelos do backup. Continuar?')) return
-      for (const [k, v] of Object.entries(j.dados as Record<string, string>)) if (k.startsWith('teclas-android.')) localStorage.setItem(k, v)
-      setMsg('Backup restaurado. Reiniciando…')
-      setTimeout(() => location.reload(), 600)
+      const dados: Record<string, string> = {}
+      for (const [k, v] of Object.entries(j.dados as Record<string, string>)) if (k.startsWith('teclas-android.')) dados[k] = v
+      setPend(dados)
+      setMsg(`Arquivo lido: ${f.name} (${Object.keys(dados).length} itens). Confirme abaixo para restaurar.`)
     } catch {
-      setMsg('Esse arquivo não é um backup do Palco Keys.')
+      setMsg(`Não consegui ler "${f.name}". Escolha o arquivo palco-keys-backup-….json que você exportou.`)
+    }
+  }
+  const restaurar = () => {
+    if (!pend) return
+    try {
+      for (const [k, v] of Object.entries(pend)) localStorage.setItem(k, v)
+      setMsg('Backup restaurado. Reiniciando…')
+      setTimeout(() => location.reload(), 800)
+    } catch {
+      setMsg('Não consegui gravar os dados neste navegador.')
     }
   }
   return (
@@ -74,9 +86,16 @@ function Backup() {
       <button className="ghost" onClick={exportar}>Exportar backup</button>{' '}
       <label className="ghost" style={{ display: 'inline-block', cursor: 'pointer', padding: '8px 12px' }}>
         Importar backup
-        <input type="file" accept=".json,application/json" style={{ display: 'none' }} onChange={(e) => { void importar(e.target.files?.[0]); e.target.value = '' }} />
+        <input type="file" style={{ display: 'none' }} onChange={(e) => { void importar(e.target.files?.[0]); e.target.value = '' }} />
       </label>
       {msg && <p style={{ marginTop: 8 }}>{msg}</p>}
+      {pend && (
+        <p style={{ marginTop: 8 }}>
+          Isto substitui as músicas, setlists e ajustes deste aparelho pelos do backup.{' '}
+          <button className="ghost" onClick={restaurar}>Sim, restaurar</button>{' '}
+          <button className="ghost" onClick={() => { setPend(null); setMsg('') }}>Cancelar</button>
+        </p>
+      )}
     </div>
   )
 }
