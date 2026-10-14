@@ -7,8 +7,12 @@ import Gate from './gate'
 /** Celular em pé: mostra o app já girado (dentro de um quadro deitado), sem pedir para virar o aparelho. */
 const portraitQuery = window.matchMedia('(orientation: portrait) and (max-width: 700px)')
 const rotated = window.self === window.top && portraitQuery.matches
+/** Ao virar o aparelho, espera o iOS terminar de girar e recarrega na posição certa (uma vez só). */
+let reloadTimer = 0
 portraitQuery.addEventListener('change', () => {
-  if (window.self === window.top) location.reload()
+  if (window.self !== window.top) return
+  window.clearTimeout(reloadTimer)
+  reloadTimer = window.setTimeout(() => location.replace(location.href), 450)
 })
 
 const root = document.getElementById('root')!
@@ -19,8 +23,9 @@ if (rotated) {
   f.src = location.pathname + location.search
   f.setAttribute('allow', 'midi; autoplay')
   f.setAttribute('title', 'Palco Keys')
-  f.style.cssText =
-    'position:fixed;top:0;left:0;width:100vh;height:100vw;width:100dvh;height:100dvw;border:0;background:#0a0612;transform-origin:0 0;transform:translateX(100vw) translateX(0) rotate(90deg);transform:translateX(100dvw) rotate(90deg)'
+  const w = window.innerWidth
+  const h = window.innerHeight
+  f.style.cssText = `position:fixed;top:0;left:0;width:${h}px;height:${w}px;border:0;background:#0a0612;transform-origin:0 0;transform:translateX(${w}px) rotate(90deg)`
   document.body.appendChild(f)
 } else {
   createRoot(root).render(
