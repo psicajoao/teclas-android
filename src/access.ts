@@ -21,7 +21,7 @@ const GRACE_DAYS = 7
 const CACHE_KEY = 'palco-keys.access'
 const DEV_KEY = 'palco-keys.device'
 
-export type Reason = 'no_session' | 'not_listed' | 'revoked' | 'expired' | 'device_limit' | 'offline' | 'error'
+export type Reason = 'no_session' | 'not_listed' | 'revoked' | 'expired' | 'device_limit' | 'trial_used' | 'offline' | 'error'
 export type Access = { ok: true; until: string | null; admin: boolean } | { ok: false; reason: Reason }
 
 let client: SupabaseClient | null = null
@@ -103,6 +103,7 @@ export const REASON_TEXT: Record<Reason, string> = {
   revoked: 'O acesso deste e-mail foi cancelado.',
   expired: 'O período de acesso deste e-mail terminou.',
   device_limit: 'Este e-mail já está em aparelhos demais. Peça para liberar outro aparelho.',
+  trial_used: 'Este aparelho já usou o teste grátis. Para continuar, faça a compra.',
   offline: 'Conecte à internet uma vez para confirmar seu acesso.',
   error: 'Não consegui confirmar o acesso agora. Tente de novo.',
 }
