@@ -1,4 +1,4 @@
-<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#0b0f14"><meta name="description" content="Palco Keys: teclado ao vivo com camadas, divisões e pad contínuo. Funciona em iPad, iPhone, Android e computador."><link rel="icon" href="favicon-32.png"><link rel="apple-touch-icon" href="apple-touch-icon.png"><title>Palco Keys</title>
+<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#0b0f14"><meta name="description" content="Palco Keys: teclado ao vivo com camadas, divisões e pad contínuo. Funciona em computador (Windows, macOS e Linux) e tablet Android. iPad em breve."><link rel="icon" href="favicon-32.png"><link rel="apple-touch-icon" href="apple-touch-icon.png"><title>Palco Keys</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&display=swap" rel="stylesheet">
 <style>
@@ -63,6 +63,13 @@ footer{margin-top:clamp(64px,10vw,120px);border-top:1px solid var(--line);paddin
 footer p{margin:0;max-width:60ch}
 @media (max-width:640px){.lic div{grid-template-columns:1fr 1fr}.lic div span:nth-child(3){display:none}.lic div:first-child span:nth-child(3){display:none}}
 @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}.btn{transition:none}}
+.plan{max-width:440px;background:#120a1e;border:1px solid var(--line);border-radius:18px;padding:28px;margin-top:24px}
+.plan .price{font-weight:800;font-size:3rem;letter-spacing:-.02em;margin:6px 0 4px}
+.plan ul{padding-left:20px;color:var(--muted);margin:14px 0 24px;line-height:1.7}
+.btn.soon{opacity:.45;pointer-events:none}
+details{border-bottom:1px solid var(--line);padding:16px 0;max-width:720px}
+details summary{cursor:pointer;font-weight:700;font-size:1.05rem}
+details p{color:var(--muted);margin:10px 0 0;line-height:1.6}
 </style></head><body>
 
 <div class="wrap">
@@ -73,9 +80,9 @@ footer p{margin:0;max-width:60ch}
 
 <header class="hero" id="top">
   <h1>Seu teclado ao vivo, <em>pronto no palco.</em></h1>
-  <p>Camadas de timbres, seções por música, pad contínuo e metrônomo. Tudo numa tela feita para tocar, no iPad, no tablet, no computador e no celular.</p>
+  <p>Camadas de timbres, seções por música, pad contínuo e metrônomo. Tudo numa tela feita para tocar, no computador e no tablet Android.</p>
   <div class="cta">
-    <a class="btn main" href="app/">Abrir o Palco Keys</a>
+    <a class="btn main" href="#planos">Testar 7 dias grátis</a>
     <a class="btn" href="#instalar">Como instalar</a>
   </div>
   <div class="stage"><div class="tablet"><img src="img/tablet.jpg" alt="Tela principal do Palco Keys no tablet: quatro camadas de timbres com faders, pad contínuo, seções Intro, Verso, Refrão, Ponte e Final e teclado."></div></div>
@@ -103,20 +110,37 @@ footer p{margin:0;max-width:60ch}
   </div>
 </section>
 
-<section>
-  <div class="split">
-    <div>
-      <p class="eyebrow">No celular também</p>
-      <h2>Até no iPhone, deitado.</h2>
-      <p class="lead">A tela se reorganiza para o modo paisagem: canais compactos, pad, seções e teclado, tudo à vista sem rolar.</p>
-      <ul class="list">
-        <li><b>Tela fixa.</b> Nada desliza enquanto você toca.</li>
-        <li><b>Faders estreitos</b> para caber quatro canais lado a lado.</li>
-        <li><b>Botão de pânico</b> sempre à mão para calar tudo.</li>
-      </ul>
+<section id="planos">
+  <p class="eyebrow">Preço</p>
+  <h2>Pague uma vez. O app é seu.</h2>
+  <p class="lead">Sem mensalidade e sem renovação. Antes de comprar, você testa 7 dias grátis, sem cartão.</p>
+  <div class="plan">
+    <p class="eyebrow">Individual</p>
+    <div class="price">R$ 199</div>
+    <p>Pagamento único.</p>
+    <ul>
+      <li>Um e-mail</li>
+      <li>Até 2 aparelhos (por exemplo, computador e tablet)</li>
+      <li>Atualizações do Palco Keys</li>
+    </ul>
+    <div class="cta">
+      <a class="btn main" href="app/?acesso=1">Testar 7 dias grátis</a>
+      <span class="btn soon" aria-disabled="true">Compra em breve</span>
     </div>
-    <div class="phone"><img src="img/phone.jpg" alt="Palco Keys no iPhone em modo paisagem, com quatro canais, pad e teclado."></div>
   </div>
+</section>
+
+<section id="duvidas">
+  <p class="eyebrow">Perguntas frequentes</p>
+  <h2>Antes de comprar.</h2>
+  <details><summary>Preciso pagar todo ano?</summary><p>Não. Você paga uma vez e o app é seu. Não existe mensalidade nem renovação obrigatória.</p></details>
+  <details><summary>Em quais aparelhos funciona?</summary><p>No computador com Windows, macOS ou Linux, usando Chrome ou Edge. Também funciona em tablet com Android. iPad em breve.</p></details>
+  <details><summary>Quantos aparelhos posso usar?</summary><p>Até 2 aparelhos com o mesmo e-mail, por exemplo um computador e um tablet.</p></details>
+  <details><summary>Preciso de internet para tocar?</summary><p>Para entrar, sim. Depois de entrar, o app funciona sem internet. Se ficar mais de 7 dias sem conectar, ele pede para conectar de novo.</p></details>
+  <details><summary>Como funciona o teste de 7 dias?</summary><p>Você informa seu e-mail e usa o app por 7 dias, sem cartão. Para continuar depois do teste, faz a compra.</p></details>
+  <details><summary>Posso pedir o dinheiro de volta?</summary><p>Sim. Você pode desistir da compra em até 7 dias depois de pagar, como garante o Código de Defesa do Consumidor.</p></details>
+  <details><summary>Preciso de um teclado MIDI?</summary><p>Sim. Conecte um teclado MIDI ao aparelho, por USB ou Bluetooth, conforme o que o seu aparelho aceita.</p></details>
+  <details><summary>Quais sons vêm no app?</summary><p>Os sons General MIDI já vêm no app. Você pode instalar outros bancos de sons (.sf2) na Biblioteca.</p></details>
 </section>
 
 <section>
@@ -147,12 +171,11 @@ footer p{margin:0;max-width:60ch}
   <h2>Sem loja. Abra o endereço e adicione à tela inicial.</h2>
   <p class="lead">O Palco Keys é um app web: o ícone aparece como qualquer outro app e abre em tela cheia.</p>
   <div class="inst">
-    <article><h3>iPad e iPhone</h3><ol><li>Abra o app no <b>Safari</b>.</li><li>Toque em <b>Compartilhar</b>.</li><li>Escolha <b>Adicionar à Tela de Início</b>.</li></ol></article>
-    <article><h3>Android</h3><ol><li>Abra o app no <b>Chrome</b>.</li><li>Toque nos três pontos.</li><li>Escolha <b>Instalar app</b>.</li></ol></article>
-    <article><h3>Windows e Mac</h3><ol><li>Abra o app no <b>Chrome</b> ou no <b>Edge</b>.</li><li>Clique no ícone de instalar na barra de endereço.</li><li>Confirme em <b>Instalar</b>.</li></ol></article>
+    <article><h3>Tablet Android</h3><ol><li>Abra o app no <b>Chrome</b>.</li><li>Toque nos três pontos.</li><li>Escolha <b>Instalar app</b>.</li></ol></article>
+    <article><h3>Windows e macOS</h3><ol><li>Abra o app no <b>Chrome</b> ou no <b>Edge</b>.</li><li>Clique no ícone de instalar na barra de endereço.</li><li>Confirme em <b>Instalar</b>.</li></ol></article>
   </div>
-  <p class="note">Para usar um teclado MIDI no iPad ou no iPhone, abra o app em um navegador com suporte a Web MIDI, como o MIDIWeb Browser. O Safari e o Chrome do iOS não liberam o MIDI.</p>
-  <div class="cta" style="margin-top:28px"><a class="btn main" href="app/">Abrir o Palco Keys</a></div>
+  <p class="note">No Windows e no macOS, use o Chrome ou o Edge. É neles que o teclado MIDI funciona.</p>
+  <div class="cta" style="margin-top:28px"><a class="btn main" href="app/?acesso=1">Testar 7 dias grátis</a></div>
 </section>
 
 <footer>
