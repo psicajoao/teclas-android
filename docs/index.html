@@ -11,7 +11,8 @@ body{background:radial-gradient(1200px 600px at 50% -200px,#1d0e36 0%,var(--bg) 
 a{color:inherit}
 .wrap{max-width:1120px;margin-inline:auto}
 nav{display:flex;align-items:center;justify-content:space-between;gap:16px;padding-block:20px}
-.logo{font-weight:800;font-size:1.35rem;letter-spacing:-.01em;text-decoration:none}
+.logo{display:inline-flex;align-items:center;gap:10px;font-weight:800;font-size:1.35rem;letter-spacing:-.01em;text-decoration:none}
+.logo img{border-radius:10px}
 .logo b{color:var(--cyan);font-weight:800}
 .btn{display:inline-flex;align-items:center;gap:8px;font:600 1rem var(--f);text-decoration:none;border-radius:12px;padding:13px 22px;border:1px solid var(--line);background:#120a1e;color:var(--ink);transition:transform .15s,border-color .15s}
 .btn:hover{border-color:var(--cyan);transform:translateY(-1px)}
@@ -66,7 +67,7 @@ footer p{margin:0;max-width:60ch}
 
 <div class="wrap">
 <nav>
-  <a class="logo" href="#top">Palco <b>Keys</b></a>
+  <a class="logo" href="#top"><img src="img/logo.png" alt="" width="40" height="40">Palco <b>Keys</b></a>
   <a class="btn" href="app/">Abrir o app</a>
 </nav>
 
