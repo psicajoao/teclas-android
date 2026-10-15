@@ -15,6 +15,9 @@ portraitQuery.addEventListener('change', () => {
   reloadTimer = window.setTimeout(() => location.replace(location.href), 450)
 })
 
+/** Versão enxuta (só para celular): esconde pad, metrônomo, gravador e partes. Build com VITE_LEAN=1. */
+if (import.meta.env.VITE_LEAN === '1') document.documentElement.classList.add('lean')
+
 const root = document.getElementById('root')!
 if (rotated) {
   document.body.style.cssText = 'margin:0;background:#0a0612;overflow:hidden'

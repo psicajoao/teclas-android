@@ -1,0 +1,9 @@
+Biblioteca de sons do Palco Keys - licenças
+
+MuseScore_General (Lite e Full) - S. Christian Collins. Licença MIT (partes domínio público ou CC0): amostras MuseScore Drumline (CC0), piano Splendid Grand (domínio público), VCSL e VSCO (CC0, Sam Gossner e outros). Fonte: https://musescore.org / pacote Debian musescore-general-soundfont.
+
+Fluid R3 Mono GM - versão mono (c) 2014-2017 Michael Cowgill; original Fluid R3 GM (c) 2000-2002, 2008 Frank Wen. Licença MIT.
+
+TimGM6mb - (c) 2004 Tim Brechbill, (c) 2010 David Bolton. Licença GNU GPL v2.
+
+Licença MIT: é permitido usar, copiar, modificar e distribuir, desde que o aviso de copyright seja mantido. O software é fornecido "como está", sem garantia.

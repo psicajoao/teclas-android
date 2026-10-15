@@ -1326,3 +1326,10 @@ h1 span { color: var(--cyan); text-shadow: 0 0 16px #00e5ff77; }
 .wl-nav button { font-size: 24px; line-height: 1; padding: 0; display: grid; place-items: center; }
 .wl-main { min-height: min-content; }
 @media (max-height: 520px) { .wl-logo { display: none; } .wl-login { gap: 8px; } .wl-login h2 { font-size: 20px; margin: 0; } .wl-login p { font-size: 14px; } .wl input, .wl-btn { padding: 10px; } }
+
+/* Versão enxuta: só aparece quando o build tem VITE_LEAN=1 */
+.lean .tempo,
+.lean .padband,
+.lean .sec-row {
+  display: none !important;
+}
