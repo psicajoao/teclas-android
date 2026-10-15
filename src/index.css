@@ -1327,9 +1327,21 @@ h1 span { color: var(--cyan); text-shadow: 0 0 16px #00e5ff77; }
 .wl-main { min-height: min-content; }
 @media (max-height: 520px) { .wl-logo { display: none; } .wl-login { gap: 8px; } .wl-login h2 { font-size: 20px; margin: 0; } .wl-login p { font-size: 14px; } .wl input, .wl-btn { padding: 10px; } }
 
-/* Versão enxuta: só aparece quando o build tem VITE_LEAN=1 */
-.lean .tempo,
-.lean .padband,
-.lean .sec-row {
-  display: none !important;
+/* Celular deitado (tela baixa): a tela inicial cabe e o botão Iniciar fica visível */
+@media (max-height: 520px) {
+  .start {
+    height: 100dvh;
+    overflow-y: auto;
+    justify-content: flex-start;
+    gap: 6px;
+    padding-top: 8px;
+  }
+  .start .logo {
+    width: 88px !important;
+    height: 88px !important;
+  }
+  .start .tag,
+  .start .hint {
+    margin: 0;
+  }
 }

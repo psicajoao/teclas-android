@@ -9,8 +9,6 @@ import Gate from './gate'
 /** Só gira quando o app está instalado na tela inicial. No navegador, fica em pé (para digitar o login). */
 const installed = window.matchMedia('(display-mode: standalone)').matches || (navigator as Navigator & { standalone?: boolean }).standalone === true
 const isPhone = installed && window.self === window.top && Math.min(window.innerWidth, window.innerHeight) <= 700
-/** Versão enxuta (só para celular): esconde pad, metrônomo, gravador e partes. Build com VITE_LEAN=1. */
-if (import.meta.env.VITE_LEAN === '1') document.documentElement.classList.add('lean')
 
 const root = document.getElementById('root')!
 if (isPhone) {
