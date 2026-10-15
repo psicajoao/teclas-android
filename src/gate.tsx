@@ -109,6 +109,14 @@ export default function Gate() {
     const { data } = sb().auth.onAuthStateChange((ev) => { if (ev === 'SIGNED_IN' || ev === 'SIGNED_OUT') recheck() })
     return () => data.subscription.unsubscribe()
   }, [recheck])
+  /** Ao voltar para a aba (ex.: depois de tocar no link do e-mail), confere o acesso de novo sozinho. */
+  useEffect(() => {
+    if (!accessEnabled) return
+    const back = () => { if (document.visibilityState === 'visible') recheck() }
+    document.addEventListener('visibilitychange', back)
+    window.addEventListener('focus', back)
+    return () => { document.removeEventListener('visibilitychange', back); window.removeEventListener('focus', back) }
+  }, [recheck])
   useEffect(() => {
     const w = () => setWelcome(true)
     const h = () => setAdmin(location.hash === '#admin')
