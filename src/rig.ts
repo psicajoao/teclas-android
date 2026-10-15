@@ -89,7 +89,8 @@ class Rig {
   private loadLayer(ch: number, l: Layer) {
     const t = this.melodic(l)
     if (!t) return
-    engine.program(t.program, ch, t.bank ?? 0, t.lsb ?? 0)
+    if (t.syn) engine.synthPatch(t.syn, ch)
+    else engine.program(t.program, ch, t.bank ?? 0, t.lsb ?? 0)
     const f = fxValues(l)
     engine.cc(74, this.cutoffOf(f.cutoff), ch)
     engine.cc(71, f.reso, ch)

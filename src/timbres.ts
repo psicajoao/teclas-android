@@ -1,6 +1,7 @@
 import { createValue } from './signal'
+import { SYN_PRESETS } from './synth'
 
-export type Timbre = { id: string; name: string; program: number; group: string; drum?: boolean; bank?: number; lsb?: number; src?: string }
+export type Timbre = { id: string; name: string; program: number; group: string; drum?: boolean; bank?: number; lsb?: number; src?: string; syn?: string }
 
 /** Muda quando o banco personalizado é registrado (para redesenhar o seletor). */
 export const customVersion = createValue(0)
@@ -41,8 +42,13 @@ const MELODIC: Timbre[] = FAMILIES.flatMap((f, fi) =>
   })),
 )
 
+// Pads e leads sintetizados (não são SoundFont): ficam num grupo próprio.
+export const SYNTH_GROUP = 'Sintetizadores'
+const SYNTHS: Timbre[] = SYN_PRESETS.map((p) => ({ id: 'syn.' + p.id, name: p.name, program: 0, group: SYNTH_GROUP, syn: p.id }))
+
 export const TIMBRES: Timbre[] = [
   ...MELODIC,
+  ...SYNTHS,
   ...DRUM_KITS.map(([program, name]) => ({ id: `drum${program}`, name, program, group: 'Bateria', drum: true })),
 ]
 
@@ -65,7 +71,7 @@ export function registerCustom(banks: { bank: { slot: number; name: string }; pa
   customVersion.set(customVersion.get() + 1)
 }
 
-export const GROUPS = [...FAMILIES.map((f) => f.group), 'Bateria']
+export const GROUPS = [...FAMILIES.map((f) => f.group), SYNTH_GROUP, 'Bateria']
 
 // Timbres de louvor mais usados, para acesso rápido.
 export const FAVORITES = ['gm0', 'gm4', 'gm19', 'gm48', 'gm49', 'gm52', 'gm89', 'gm94']

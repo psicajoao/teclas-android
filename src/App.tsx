@@ -543,7 +543,7 @@ function Picker({ onPick, onClose, padMode }: { onPick: (id: string | null) => v
         <div className="cards">
           {!showFolders && shown.map((t) => (
             <button key={t.id} className={'card' + (isCustom && edit ? ' edit' : '')} disabled={busy} onClick={() => (isCustom && edit ? void removeSound(t) : onPick(t.id))}>
-              <small>{t.drum ? 'Kit' : t.group === CUSTOM_GROUP ? (t.src ?? '') : t.program + 1}</small>
+              <small>{t.drum ? 'Kit' : t.syn ? 'Sint.' : t.group === CUSTOM_GROUP ? (t.src ?? '') : t.program + 1}</small>
               {t.name}
             </button>
           ))}

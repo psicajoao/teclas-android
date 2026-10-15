@@ -5,6 +5,8 @@ import { registerCustom } from './timbres'
 import type { BankMeta } from './bank'
 import { ChanFx, isNeutral } from './chanfx'
 import type { SndCfg } from './chanfx'
+import { SynthVoices, synPreset } from './synth'
+import type { SynChan } from './synth'
 
 const BASE = import.meta.env.BASE_URL
 /** true quando o áudio do navegador está ligado (rodando). */
@@ -43,6 +45,12 @@ export class Engine {
   }
   private pendingSynth: WorkletSynthesizer | null = null
   private pendingCtx: AudioContext | null = null
+  /** Sintetizadores próprios (pads e leads): patch de cada canal, ou null quando o canal toca SoundFont. */
+  private synVoices: SynthVoices | null = null
+  private chanSyn: (string | null)[] = Array(16).fill(null)
+  private chanSt: SynChan[] = Array.from({ length: 16 }, () => ({ vol: 1, expr: 1, cut: 1, reso: 0, bend: 0 }))
+  private chanSus: boolean[] = Array(16).fill(false)
+  private sustained: Set<number>[] = Array.from({ length: 16 }, () => new Set<number>())
   private maxVoices: number[] = Array(16).fill(64)
   private voices: number[][] = Array.from({ length: 16 }, () => [])
   private buf = new Uint8Array(512)
@@ -112,6 +120,7 @@ export class Engine {
     analyser.fftSize = 512
     analyser.connect(ctx.destination)
     this.analyser = analyser
+    this.synVoices = new SynthVoices(ctx, analyser)
     // tudo vai direto para a saída; um canal só passa por uma cadeia própria quando a página de som dele está alterada
     synth.connect(analyser)
     this.pendingSynth = synth
@@ -288,7 +297,24 @@ export class Engine {
     return m / 128
   }
 
+  /** Põe um sintetizador (pad/lead) no canal. O SoundFont desse canal deixa de ser usado até um novo programa. */
+  synthPatch(id: string, channel = this.channel) {
+    this.chanSyn[channel] = id
+    this.chanSt[channel] = { vol: 1, expr: 1, cut: 1, reso: 0, bend: 0 }
+    this.chanSus[channel] = false
+    this.sustained[channel].clear()
+  }
+
   noteOn(note: number, velocity: number, channel = this.channel) {
+    const syn = this.chanSyn[channel]
+    if (syn) {
+      const p = synPreset(syn)
+      if (!p || !this.synVoices) return
+      if (velocity === 0) return this.noteOff(note, channel)
+      this.sustained[channel].delete(note)
+      this.synVoices.noteOn(channel, note, velocity, p, this.chanSt[channel])
+      return
+    }
     const v = this.voices[channel]
     if (v) {
       const i = v.indexOf(note)
@@ -300,19 +326,50 @@ export class Engine {
     this.synth?.noteOn(channel, note, velocity)
   }
   noteOff(note: number, channel = this.channel) {
+    if (this.chanSyn[channel]) {
+      if (this.chanSus[channel]) this.sustained[channel].add(note)
+      else this.synVoices?.noteOff(channel, note)
+      return
+    }
     const v = this.voices[channel]
     const i = v ? v.indexOf(note) : -1
     if (i >= 0) v.splice(i, 1)
     this.synth?.noteOff(channel, note)
   }
   cc(controller: number, value: number, channel = this.channel) {
+    if (this.chanSyn[channel]) return this.synCc(controller, value, channel)
     // @ts-expect-error o tipo MIDIController é um enum numérico da biblioteca
     this.synth?.controllerChange(channel, controller, value)
   }
+  /** Controles MIDI que um sintetizador entende (volume, expressão, filtro, sustain). */
+  private synCc(controller: number, value: number, channel: number) {
+    const st = this.chanSt[channel]
+    if (controller === 7) st.vol = value / 127
+    else if (controller === 11) st.expr = value / 127
+    else if (controller === 74) st.cut = 0.25 + (value / 127) * 1.75
+    else if (controller === 71) st.reso = (value / 127) * 8
+    else if (controller === 64) {
+      this.chanSus[channel] = value >= 64
+      if (!this.chanSus[channel]) {
+        for (const n of this.sustained[channel]) this.synVoices?.noteOff(channel, n)
+        this.sustained[channel].clear()
+      }
+    } else if (controller === 120 || controller === 123) {
+      this.sustained[channel].clear()
+      this.synVoices?.allOffChannel(channel)
+    }
+  }
   pitchBend(value14: number, channel = this.channel) {
+    if (this.chanSyn[channel]) {
+      const st = this.chanSt[channel]
+      st.bend = ((value14 - 8192) / 8192) * 200 // ±2 semitons
+      this.synVoices?.bend(channel, st.bend)
+      return
+    }
     this.synth?.pitchWheel(channel, value14)
   }
   program(program: number, channel = this.channel, bank = 0, lsb = 0) {
+    this.chanSyn[channel] = null
     if (channel !== 9) {
       this.cc(0, bank, channel)
       this.cc(32, lsb, channel)
@@ -321,6 +378,8 @@ export class Engine {
   }
   panic() {
     this.synth?.stopAll(true)
+    this.synVoices?.allOff()
+    this.sustained.forEach((s) => s.clear())
   }
 }
 
