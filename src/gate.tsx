@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import App from './App'
 import Admin from './admin'
-import { accessEnabled, checkAccess, REASON_TEXT, sb, sendLink, signOut, verifyCode, wantTrial, type Access } from './access'
+import { accessEnabled, checkAccess, REASON_TEXT, sb, sendLink, signOut, wantTrial, type Access } from './access'
 
 const SEEN = 'palco-keys.welcome'
 const base = import.meta.env.BASE_URL
@@ -20,7 +20,6 @@ function Welcome({ acc, onEnter }: { acc: Access | null; onEnter: () => void }) 
   const last = SLIDES.length
   const [i, setI] = useState(0)
   const [email, setEmail] = useState('')
-  const [code, setCode] = useState('')
   const [sent, setSent] = useState(false)
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState('')
@@ -40,13 +39,6 @@ function Welcome({ acc, onEnter }: { acc: Access | null; onEnter: () => void }) 
     setBusy(false)
     if (err) setMsg('Não consegui enviar: ' + err)
     else setSent(true)
-  }
-  const verify = async () => {
-    setBusy(true); setMsg('')
-    const err = await verifyCode(email, code)
-    setBusy(false)
-    if (err) setMsg('Código inválido ou vencido.')
-    else onEnter()
   }
 
   const denied = acc && !acc.ok && acc.reason !== 'no_session' ? REASON_TEXT[acc.reason] : ''
@@ -82,11 +74,9 @@ function Welcome({ acc, onEnter }: { acc: Access | null; onEnter: () => void }) 
               </>
             ) : (
               <>
-                <p>Enviamos um e-mail para <b>{email}</b>. Toque em “Liberar este aparelho” na mensagem. Se estiver com o app instalado, digite aqui o código de 6 números do e-mail.</p>
-                <input id="wl-code" inputMode="numeric" autoComplete="one-time-code" maxLength={8} placeholder="Código do e-mail" value={code} onChange={(e) => setCode(e.target.value)} />
-                <button className="wl-btn" disabled={busy || code.length < 6} onClick={verify}>Entrar com o código</button>
-                <button className="wl-btn o" onClick={onEnter}>Já liberei pelo e-mail</button>
-                <button className="wl-link" onClick={() => { setSent(false); setCode('') }}>Usar outro e-mail</button>
+                <p>Enviamos um link para <b>{email}</b>. Abra o e-mail neste mesmo aparelho e toque no link para liberar.</p>
+                <button className="wl-btn" onClick={onEnter}>Já liberei pelo e-mail</button>
+                <button className="wl-link" onClick={() => { setSent(false);  }}>Usar outro e-mail</button>
               </>
             )}
             {msg && <p className="wl-err">{msg}</p>}
