@@ -96,6 +96,33 @@ function Welcome({ acc, onEnter }: { acc: Access | null; onEnter: () => void }) 
   )
 }
 
+/** Só tablet Android e computador (Windows, macOS, Linux). Celular e iPad ficam de fora por enquanto. */
+function unsupportedDevice(): boolean {
+  const ua = navigator.userAgent
+  const iphone = /iPhone|iPod/.test(ua)
+  // iPadOS pede site de computador e se identifica como Macintosh, mas tem tela de toque (Mac não tem).
+  const ipad = /iPad/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 0)
+  const androidPhone = /Android/.test(ua) && /Mobile/.test(ua)
+  return iphone || ipad || androidPhone
+}
+
+function Unsupported() {
+  return (
+    <div className="wl">
+      <header className="wl-top">
+        <img src={base + 'icon-192.png'} alt="" width={36} height={36} />
+        <span className="wl-brand">Palco <span>Keys</span></span>
+      </header>
+      <main className="wl-main">
+        <div className="wl-login">
+          <h2>Este aparelho não é compatível</h2>
+          <p>O Palco Keys funciona em tablet Android e em computador com Windows, macOS ou Linux. iPad em breve.</p>
+        </div>
+      </main>
+    </div>
+  )
+}
+
 /** Porteiro do app: boas-vindas na primeira vez, confere o acesso e abre o app. */
 export default function Gate() {
   const [acc, setAcc] = useState<Access | null>(null)
@@ -126,6 +153,8 @@ export default function Gate() {
   }, [])
 
   const enter = async () => { markSeen(); setWelcome(false); await recheck() }
+
+  if (unsupportedDevice()) return <Unsupported />
 
   if (accessEnabled && !acc) return <div className="wl"><div className="wl-wait">Conferindo seu acesso…</div></div>
   if (admin && acc && acc.ok && acc.admin) return <Admin onClose={() => { location.hash = ''; setAdmin(false) }} />
