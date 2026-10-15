@@ -10,7 +10,7 @@ const SLIDES = [
   { img: '2.jpg', t: 'Escolha o timbre em segundos', p: 'Pianos, cordas, pads e corais organizados em pastas. Favoritos sempre à mão.' },
   { img: '3.jpg', t: 'Biblioteca de sons', p: 'Instale bancos de sons com um toque e deixe o app com a sua cara.' },
   { img: '4.jpg', t: 'Regiões do teclado', p: 'Divida o teclado e toque baixo, pad e solo ao mesmo tempo.' },
-  { img: '5.jpg', t: 'Funciona em qualquer aparelho', p: 'Android, iPhone, iPad e computador. Instale na tela inicial e use até sem internet.' },
+  { img: '5.jpg', t: 'Funciona em qualquer aparelho', p: 'Computador com Windows, macOS ou Linux, e tablet Android. Instale na tela inicial e use até sem internet.' },
 ]
 
 function seen(): boolean { try { return !!localStorage.getItem(SEEN) } catch { return false } }
@@ -18,7 +18,8 @@ function markSeen() { try { localStorage.setItem(SEEN, '1') } catch { /* ok */ }
 
 function Welcome({ acc, onEnter }: { acc: Access | null; onEnter: () => void }) {
   const last = SLIDES.length
-  const [i, setI] = useState(0)
+  /** Quem ainda não tem acesso vai direto para a tela de e-mail (sem passar pelos slides). */
+  const [i, setI] = useState(acc && !acc.ok ? last : 0)
   const [email, setEmail] = useState('')
   const [sent, setSent] = useState(false)
   const [busy, setBusy] = useState(false)
