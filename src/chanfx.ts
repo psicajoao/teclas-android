@@ -101,13 +101,11 @@ export class ChanFx {
     this.input.connect(this.sampler)
     this.sampler.connect(this.clean)
     this.clean.connect(this.pre)
-    this.sampler.connect(this.odIn)
     this.odIn.connect(this.shaper)
     this.shaper.connect(this.tone)
     this.tone.connect(this.odOut)
     this.odOut.connect(this.pre)
     this.pre.connect(this.dry)
-    this.pre.connect(this.comp)
     this.comp.connect(this.wet)
     this.dry.connect(this.post)
     this.wet.connect(this.post)
@@ -120,24 +118,39 @@ export class ChanFx {
       b.gain.value = 0
       return b
     })
-    let prev: AudioNode = this.vol
-    for (const b of this.eq) {
-      prev.connect(b)
-      prev = b
-    }
     this.panner = ctx.createStereoPanner()
-    prev.connect(this.panner)
-    this.panner.connect(dest)
+    this.dest = dest
+    this.wire(false, false, false, false)
+  }
+  private dest: AudioNode
+  private flags = ''
+  /** Liga só o que está em uso (distorção, compressor, EQ, pan): o resto fica fora do grafo e não gasta processador. */
+  private wire(od: boolean, comp: boolean, eq: boolean, pan: boolean) {
+    const key = [od, comp, eq, pan].join()
+    if (key === this.flags) return
+    this.flags = key
+    const off = (n: AudioNode, to?: AudioNode) => { try { to ? n.disconnect(to) : n.disconnect() } catch { /* */ } }
+    off(this.sampler, this.odIn)
+    off(this.pre, this.comp)
+    off(this.vol)
+    this.eq.forEach((b) => off(b))
+    off(this.panner)
+    if (od) this.sampler.connect(this.odIn)
+    if (comp) this.pre.connect(this.comp)
+    let prev: AudioNode = this.vol
+    if (eq) for (const b of this.eq) { prev.connect(b); prev = b }
+    if (pan) { prev.connect(this.panner); this.panner.connect(this.dest) } else prev.connect(this.dest)
   }
   private curveFor = -1
   dispose() {
-    try { this.input.disconnect(); this.panner.disconnect() } catch { /* */ }
+    try { this.input.disconnect(); this.vol.disconnect(); this.eq.forEach((b) => b.disconnect()); this.panner.disconnect() } catch { /* */ }
   }
   /** `volFrac` = posição do fader (0–1), usada pela "faixa do fader de volume". */
   apply(c: SndCfg, volFrac: number) {
     const t = this.ctx.currentTime
     const sm = (p: AudioParam, v: number) => p.setTargetAtTime(v, t, 0.015)
     const k = c.comp
+    this.wire(!!c.od, k.on && k.mix > 0, c.eq.on, c.set.pan !== 0)
     sm(this.sampler.gain, db(c.set.sampler))
     const od = c.od
     if (od) {
