@@ -12,6 +12,17 @@ const BASE = import.meta.env.BASE_URL
 /** true quando o áudio do navegador está ligado (rodando). */
 export const audioOn = createValue(true)
 
+/** Latência do áudio escolhida em Configurações: baixa (padrão), média ou alta. Vale depois de reiniciar o áudio. */
+export type LatencyLevel = 'baixa' | 'media' | 'alta'
+export const LATENCY_KEY = 'palco.latencia'
+export function latencyLevel(): LatencyLevel {
+  try { const v = localStorage.getItem(LATENCY_KEY); return v === 'media' || v === 'alta' ? v : 'baixa' } catch { return 'baixa' }
+}
+export function latencyHint(): AudioContextLatencyCategory {
+  const l = latencyLevel()
+  return l === 'media' ? 'balanced' : l === 'alta' ? 'playback' : 'interactive'
+}
+
 export class Engine {
   ctx: AudioContext | null = null
   synth: WorkletSynthesizer | null = null
@@ -104,7 +115,7 @@ export class Engine {
 
   private async init() {
     this.onStage?.('Ligando o áudio…')
-    const ctx = new AudioContext({ latencyHint: 'interactive' })
+    const ctx = new AudioContext({ latencyHint: latencyHint() })
     void ctx.resume().catch(() => {})
     // iOS: tocar mesmo com o modo silencioso ligado, e religar o áudio se o sistema o suspender.
     try { (navigator as unknown as { audioSession?: { type: string } }).audioSession!.type = 'playback' } catch { /* */ }
