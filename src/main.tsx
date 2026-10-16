@@ -74,6 +74,34 @@ if (import.meta.env.VITE_ALLOW_IPAD === '1') {
   b.style.padding = '10px 12px'
   b.addEventListener('pointerdown', onTap)
   b.addEventListener('touchstart', (e) => e.stopPropagation(), { passive: true })
+  // Comparação direta: um bipe simples do navegador (sem o motor de sons do app) contra uma nota do piano do app.
+  const bar = document.createElement('div')
+  bar.style.cssText = 'position:fixed;left:50%;top:6px;transform:translateX(-50%);z-index:99999;display:flex;gap:10px'
+  const mk = (label: string, fn: () => void) => {
+    const x = document.createElement('button')
+    x.textContent = label
+    x.style.cssText = 'padding:14px 22px;font:700 15px system-ui;border-radius:12px;border:2px solid #7fe;background:#102;color:#7fe;touch-action:none'
+    x.addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); fn() })
+    bar.appendChild(x)
+  }
+  mk('BIPE SIMPLES', () => {
+    const c = engine.ctx
+    if (!c) return
+    const o = c.createOscillator()
+    const g = c.createGain()
+    o.frequency.value = 880
+    g.gain.setValueAtTime(0.0001, c.currentTime)
+    g.gain.linearRampToValueAtTime(0.25, c.currentTime + 0.003)
+    g.gain.exponentialRampToValueAtTime(0.0001, c.currentTime + 0.25)
+    o.connect(g).connect(c.destination)
+    o.start()
+    o.stop(c.currentTime + 0.3)
+  })
+  mk('PIANO DO APP', () => {
+    engine.noteOn(84, 110)
+    window.setTimeout(() => engine.noteOff(84), 250)
+  })
+  document.body.appendChild(bar)
   let clip = 0
   setInterval(() => { if (engine.peak() > 0.98) clip = Date.now() }, 50)
   setInterval(() => {
