@@ -182,3 +182,7 @@
     border-right-color: var(--border);
   }
 }
+
+/* Dica do Foco do Mac (aparece uma vez) */
+.focus-tip { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 10px 14px; border-radius: 12px; background: #ffffff14; border: 1px solid #ffffff2a; font-size: 0.9em; }
+.focus-tip span { flex: 1; min-width: 200px; }

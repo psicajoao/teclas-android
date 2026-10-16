@@ -569,6 +569,14 @@ function useWide() {
 }
 
 export default function App() {
+  /** Dica única: ativar o Foco do Mac antes do culto para não receber avisos. */
+  const [focusTip, setFocusTip] = useState(() => {
+    try { return localStorage.getItem('palco.focusTip') !== '1' } catch { return false }
+  })
+  const dismissFocusTip = () => {
+    try { localStorage.setItem('palco.focusTip', '1') } catch { /* sem armazenamento */ }
+    setFocusTip(false)
+  }
   const [initial] = useState(load)
   const [songs, setSongs] = useState<Song[]>(initial.songs)
   const [songIdx, setSongIdx] = useState(initial.song)
@@ -1261,6 +1269,12 @@ export default function App() {
 
   return (
     <div className={'app' + (ready ? ' fit' : '')}>
+      {focusTip && (
+        <div className="focus-tip" role="note">
+          <span>Antes do culto, ative o <b>Foco</b> do Mac (Centro de Controle) para não receber avisos durante o som.</span>
+          <button className="ghost" onClick={dismissFocusTip}>Entendi</button>
+        </div>
+      )}
       {slPage && (
         <SetlistPage
           songs={songs}
