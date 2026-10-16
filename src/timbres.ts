@@ -1,7 +1,9 @@
 import { createValue } from './signal'
 import { SYN_PRESETS } from './synth'
+import { PACK, PACK_BASE, PACK_GROUP } from './pack'
+import type { SndPatch } from './chanfx'
 
-export type Timbre = { id: string; name: string; program: number; group: string; drum?: boolean; bank?: number; lsb?: number; src?: string; syn?: string }
+export type Timbre = { id: string; name: string; program: number; group: string; drum?: boolean; bank?: number; lsb?: number; src?: string; syn?: string; snd?: SndPatch }
 
 /** Muda quando o banco personalizado é registrado (para redesenhar o seletor). */
 export const customVersion = createValue(0)
@@ -55,9 +57,16 @@ export const TIMBRES: Timbre[] = [
 type Patch = { name: string; program: number; bankMSB: number; bankLSB: number; isDrum: boolean }
 /** Registra os timbres dos SoundFonts do usuário (grupo "Meus bancos"). */
 export function registerCustom(banks: { bank: { slot: number; name: string }; patches: Patch[] }[]) {
-  for (let i = TIMBRES.length - 1; i >= 0; i--) if (TIMBRES[i].group === CUSTOM_GROUP) TIMBRES.splice(i, 1)
+  for (let i = TIMBRES.length - 1; i >= 0; i--) if (TIMBRES[i].group === CUSTOM_GROUP || TIMBRES[i].group === PACK_GROUP) TIMBRES.splice(i, 1)
   for (const { bank, patches } of banks) {
     const label = bank.name.replace(/\.sf[23]$/i, '')
+    // Pacote do app: quando o banco base está instalado, os timbres do pacote passam a existir.
+    if (label.toLowerCase() === PACK_BASE.toLowerCase() && !TIMBRES.some((t) => t.group === PACK_GROUP)) {
+      // O banco base é um arquivo conhecido: não depende da lista de presets, que pode chegar incompleta durante o carregamento.
+      for (const p of PACK) {
+        TIMBRES.push({ id: p.id, name: p.name, program: p.program, group: PACK_GROUP, bank: bank.slot * 8, lsb: 0, snd: p.snd })
+      }
+    }
     const list = [...patches].filter((p) => !p.isDrum).sort((a, b) => a.bankMSB - b.bankMSB || a.bankLSB - b.bankLSB || a.program - b.program)
     const seen = new Set<string>()
     for (const p of list) {
@@ -71,7 +80,7 @@ export function registerCustom(banks: { bank: { slot: number; name: string }; pa
   customVersion.set(customVersion.get() + 1)
 }
 
-export const GROUPS = [...FAMILIES.map((f) => f.group), SYNTH_GROUP, 'Bateria']
+export const GROUPS = [...FAMILIES.map((f) => f.group), SYNTH_GROUP, PACK_GROUP, 'Bateria']
 
 // Timbres de louvor mais usados, para acesso rápido.
 export const FAVORITES = ['gm0', 'gm4', 'gm19', 'gm48', 'gm49', 'gm52', 'gm89', 'gm94']

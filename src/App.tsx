@@ -17,6 +17,7 @@ import { slotsOf, fxDef, groupSummary } from './fx'
 import type { FxSlot } from './fx'
 import { audioOn } from './engine'
 import { TIMBRES, GROUPS, FAVORITES, CUSTOM_GROUP, customVersion } from './timbres'
+import { PACK_GROUP } from './pack'
 import { Drawer, SettingsPanel, LearnPanel } from './panels'
 import { waitingValue, lastMsgValue, setBinding, findAction, learnOpen } from './learn'
 import { roleOf, connectedIds } from './midiconf'
@@ -364,7 +365,8 @@ function ZoneEditor({ layers, split, onChange, onClose }: { layers: Layer[]; spl
 function Picker({ onPick, onClose, padMode }: { onPick: (id: string | null) => void; onClose: () => void; padMode: boolean }) {
   const ver = useValue(customVersion)
   const hasCustom = ver > 0 && TIMBRES.some((t) => t.group === CUSTOM_GROUP)
-  const groups = [CUSTOM_GROUP, ...(padMode ? GROUPS.filter((g) => g !== 'Bateria') : GROUPS)]
+  const hasPack = ver >= 0 && TIMBRES.some((t) => t.group === PACK_GROUP)
+  const groups = [CUSTOM_GROUP, ...(padMode ? GROUPS.filter((g) => g !== 'Bateria') : GROUPS).filter((g) => g !== PACK_GROUP || hasPack)]
   const [group, setGroup] = useState<string>(hasCustom ? CUSTOM_GROUP : 'Favoritos')
   const [q, setQ] = useState('')
   const [bank, setBank] = useState<number | null>(null)
@@ -1252,7 +1254,12 @@ export default function App() {
         if (padOn && song.key != null) pad.play(song.key, 2, true)
       }
     } else {
-      editLayer(pickerFor, { timbre: id, off: false })
+      // Timbres do pacote já trazem os ajustes de som salvos (equalizador, compressor, vozes).
+      // Ao sair de um timbre do pacote para outro, os ajustes do pacote são desfeitos.
+      const t = byId(id)
+      const prev = byId(section.layers[pickerFor]?.timbre ?? null)
+      const snd = t?.snd ? { snd: t.snd } : prev?.snd ? { snd: undefined } : {}
+      editLayer(pickerFor, { timbre: id, off: false, ...snd })
     }
     setPickerFor(null)
   }
