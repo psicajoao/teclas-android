@@ -130,6 +130,18 @@ function Unsupported() {
   )
 }
 
+/** Só na versão de teste: tira a sessão do navegador mesmo se o Supabase demorar ou falhar, e recarrega limpo. */
+async function forceSignOut() {
+  try {
+    await Promise.race([signOut(), new Promise((r) => setTimeout(r, 3000))])
+  } catch { /* segue para limpar */ }
+  try {
+    for (const k of Object.keys(localStorage)) if (k.startsWith('sb-') || k.includes('supabase') || k.startsWith('palco')) localStorage.removeItem(k)
+    sessionStorage.clear()
+  } catch { /* ok */ }
+  location.href = location.pathname + '?v=' + Date.now()
+}
+
 /** Só na versão de teste: mostra que a conta logada não é de administrador e deixa sair dela. */
 function TestBlocked() {
   return (
@@ -142,7 +154,7 @@ function TestBlocked() {
         <div className="wl-login">
           <h2>Teste: conta sem administrador</h2>
           <p>Esta sessão não é de administrador. Saia desta conta e entre com o e-mail de administrador.</p>
-          <button className="wl-btn" onClick={async () => { await signOut(); location.reload() }}>Sair desta conta</button>
+          <button className="wl-btn" onClick={() => forceSignOut()}>Sair desta conta</button>
         </div>
       </main>
     </div>
