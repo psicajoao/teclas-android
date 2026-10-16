@@ -56,6 +56,8 @@ if (import.meta.env.VITE_ALLOW_IPAD === '1') {
     const c = engine.ctx as (AudioContext & { outputLatency?: number }) | null
     if (!c) { b.textContent = 'áudio: ligando…'; return }
     const ms = (v?: number) => (v == null ? 'n/d' : Math.round(v * 1000) + ' ms')
-    b.textContent = `base ${ms(c.baseLatency)} · saída ${ms(c.outputLatency)} · ${c.sampleRate} Hz · ${c.state}`
+    const lag = (window as unknown as { __lag?: number[] }).__lag
+    const l = lag && lag.length ? ` · MIDI ${Math.round(Math.min(...lag))}–${Math.round(Math.max(...lag))} ms` : ' · MIDI: toque'
+    b.textContent = `base ${ms(c.baseLatency)} · saída ${ms(c.outputLatency)} · ${c.sampleRate} Hz · ${c.state}${l}`
   }, 1000)
 }

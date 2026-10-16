@@ -785,6 +785,12 @@ export default function App() {
   const onMidi = useCallback(
     (e: MIDIMessageEvent) => {
       if (!e.data) return
+      if (import.meta.env.VITE_ALLOW_IPAD === '1' && (e.data[0] & 0xf0) === 0x90 && e.data[2] > 0) {
+        // teste: atraso entre o aparelho receber a nota e o app tratá-la
+        const w = window as unknown as { __lag?: number[] }
+        ;(w.__lag ??= []).push(performance.now() - e.timeStamp)
+        if (w.__lag.length > 8) w.__lag.shift()
+      }
       const ev = parseMidi(e.data, e.timeStamp)
       if (!ev) return
       const src = (e.target as MIDIInput | null)?.id ?? ''
