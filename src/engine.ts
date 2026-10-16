@@ -88,7 +88,7 @@ export class Engine {
   kick() {
     const ctx = this.ctx
     if (!ctx) return
-    try { (navigator as unknown as { audioSession?: { type: string } }).audioSession!.type = 'playback' } catch { /* */ }
+    try { (navigator as unknown as { audioSession?: { type: string } }).audioSession!.type = sessionType() } catch { /* */ }
     if (this.kicks >= 1) void ctx.suspend().catch(() => {})
     this.kicks++
     this.unlock(ctx)
@@ -107,7 +107,7 @@ export class Engine {
     const ctx = new AudioContext({ latencyHint: 'interactive' })
     void ctx.resume().catch(() => {})
     // iOS: tocar mesmo com o modo silencioso ligado, e religar o áudio se o sistema o suspender.
-    try { (navigator as unknown as { audioSession?: { type: string } }).audioSession!.type = 'playback' } catch { /* */ }
+    try { (navigator as unknown as { audioSession?: { type: string } }).audioSession!.type = sessionType() } catch { /* */ }
     const sync = () => audioOn.set(ctx.state === 'running')
     const wake = () => { if (ctx.state !== 'running') this.unlock(ctx); sync() }
     for (const ev of ['pointerdown', 'pointerup', 'touchend', 'click', 'keydown'] as const) document.addEventListener(ev, wake, true)
@@ -383,4 +383,9 @@ export class Engine {
   }
 }
 
+/** Modo de áudio do iOS. Na versão de teste dá para trocar tocando na etiqueta (para comparar a latência). */
+export function sessionType(): string {
+  if (import.meta.env.VITE_ALLOW_IPAD === '1') { try { return localStorage.getItem('pk.as') || 'playback' } catch { /* */ } }
+  return 'playback'
+}
 export const engine = new Engine()

@@ -50,8 +50,18 @@ if ('serviceWorker' in navigator && import.meta.env.PROD) {
 // Só na versão de teste: mostra a latência que o aparelho informa, para medir em vez de adivinhar.
 if (import.meta.env.VITE_ALLOW_IPAD === '1') {
   const b = document.createElement('div')
-  b.style.cssText = 'position:fixed;left:6px;bottom:6px;z-index:99999;background:#000c;color:#7fe;font:11px/1.3 monospace;padding:4px 7px;border-radius:6px;pointer-events:none'
+  b.style.cssText = 'position:fixed;left:6px;bottom:6px;z-index:99999;background:#000c;color:#7fe;font:11px/1.3 monospace;padding:4px 7px;border-radius:6px;'
   document.body.appendChild(b)
+  const modes = ['playback', 'ambient', 'auto', 'play-and-record']
+  b.addEventListener('pointerdown', (e) => {
+    e.stopPropagation()
+    let cur = 'playback'
+    try { cur = localStorage.getItem('pk.as') || 'playback' } catch { /* */ }
+    const next = modes[(modes.indexOf(cur) + 1) % modes.length]
+    try { localStorage.setItem('pk.as', next) } catch { /* */ }
+    try { (navigator as unknown as { audioSession: { type: string } }).audioSession.type = next } catch { /* */ }
+    void engine.ctx?.resume().catch(() => {})
+  })
   let clip = 0
   setInterval(() => { if (engine.peak() > 0.98) clip = Date.now() }, 50)
   setInterval(() => {
@@ -60,6 +70,6 @@ if (import.meta.env.VITE_ALLOW_IPAD === '1') {
     const ms = (v?: number) => (v == null ? 'n/d' : Math.round(v * 1000) + ' ms')
     const lag = (window as unknown as { __lag?: number[] }).__lag
     const l = lag && lag.length ? ` · MIDI ${Math.round(Math.min(...lag))}–${Math.round(Math.max(...lag))} ms` : ' · MIDI: toque'
-    b.textContent = `base ${ms(c.baseLatency)} · saída ${ms(c.outputLatency)} · ${c.sampleRate} Hz · ${c.state}${l}${Date.now() - clip < 4000 ? ' · ESTOUROU' : ''}`
+    b.textContent = `base ${ms(c.baseLatency)} · saída ${ms(c.outputLatency)} · ${c.sampleRate} Hz · ${c.state}${l}${Date.now() - clip < 4000 ? ' · ESTOUROU' : ''} · modo: ${(navigator as unknown as { audioSession?: { type: string } }).audioSession?.type ?? 'sem suporte'} (toque aqui para trocar)`
   }, 1000)
 }
