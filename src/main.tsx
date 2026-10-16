@@ -52,6 +52,7 @@ if (import.meta.env.VITE_ALLOW_IPAD === '1') {
   const b = document.createElement('div')
   b.style.cssText = 'position:fixed;left:6px;bottom:6px;z-index:99999;background:#000c;color:#7fe;font:11px/1.3 monospace;padding:4px 7px;border-radius:6px;'
   document.body.appendChild(b)
+  ;(window as unknown as { __engine: unknown }).__engine = engine
   const modes = ['playback', 'ambient', 'auto', 'play-and-record']
   let taps = 0
   let err = ''
@@ -110,6 +111,8 @@ if (import.meta.env.VITE_ALLOW_IPAD === '1') {
     const ms = (v?: number) => (v == null ? 'n/d' : Math.round(v * 1000) + ' ms')
     const lag = (window as unknown as { __lag?: number[] }).__lag
     const l = lag && lag.length ? ` · MIDI ${Math.round(Math.min(...lag))}–${Math.round(Math.max(...lag))} ms` : ' · MIDI: toque'
-    b.textContent = `base ${ms(c.baseLatency)} · saída ${ms(c.outputLatency)} · ${c.sampleRate} Hz · ${c.state}${l}${Date.now() - clip < 4000 ? ' · ESTOUROU' : ''} · modo: ${(navigator as unknown as { audioSession?: { type: string } }).audioSession?.type ?? 'sem suporte'} (toque aqui para trocar) · toques ${taps}${err ? ' · erro: ' + err : ''}`
+    const kb = (window as unknown as { __kb?: { wait: number; proc: number }[] }).__kb
+    const k = kb && kb.length ? ` · TECLADO espera ${Math.round(Math.max(...kb.map((x) => x.wait)))} ms, envio ${Math.round(Math.max(...kb.map((x) => x.proc)))} ms` : ''
+    b.textContent = `base ${ms(c.baseLatency)} · saída ${ms(c.outputLatency)} · ${c.sampleRate} Hz · ${c.state}${l}${k}${Date.now() - clip < 4000 ? ' · ESTOUROU' : ''} · modo: ${(navigator as unknown as { audioSession?: { type: string } }).audioSession?.type ?? 'sem suporte'} (toque aqui para trocar) · toques ${taps}${err ? ' · erro: ' + err : ''}`
   }, 1000)
 }

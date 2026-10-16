@@ -764,6 +764,15 @@ export default function App() {
     if (n === null) return
     try { e.currentTarget.setPointerCapture(e.pointerId) } catch { /* */ }
     fingers.current.set(e.pointerId, n)
+    if (import.meta.env.VITE_ALLOW_IPAD === '1') {
+      // teste: quanto o toque esperou na fila antes do app tratar, e quanto o app levou para mandar a nota
+      const w = window as unknown as { __kb?: { wait: number; proc: number }[] }
+      const t0 = performance.now()
+      press(n, 100)
+      ;(w.__kb ??= []).push({ wait: t0 - e.timeStamp, proc: performance.now() - t0 })
+      if (w.__kb.length > 8) w.__kb.shift()
+      return
+    }
     press(n, 100)
   }
   const kbMove = (e: React.PointerEvent<HTMLDivElement>) => {
