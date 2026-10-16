@@ -109,7 +109,8 @@ function unsupportedDevice(): boolean {
   const iphone = /iPhone|iPod/.test(ua)
   const androidPhone = /Android/.test(ua) && /Mobile/.test(ua)
   // Versão de teste para iPad (build com VITE_ALLOW_IPAD=1): iPad só entra com a conta de administrador (ver Gate).
-  return iphone || androidPhone || (isIpad() && import.meta.env.VITE_ALLOW_IPAD !== '1')
+  if (import.meta.env.VITE_ALLOW_IPAD === '1') return false // teste: qualquer aparelho; só o administrador entra (ver Gate)
+  return iphone || androidPhone || isIpad()
 }
 
 function Unsupported() {
@@ -162,7 +163,7 @@ export default function Gate() {
 
   if (unsupportedDevice()) return <Unsupported />
   // Teste de iPad: só a conta de administrador passa; os demais veem a mensagem de aparelho não compatível.
-  if (import.meta.env.VITE_ALLOW_IPAD === '1' && isIpad() && acc && acc.ok && !acc.admin) return <Unsupported />
+  if (import.meta.env.VITE_ALLOW_IPAD === '1' && acc && acc.ok && !acc.admin) return <Unsupported />
 
   if (accessEnabled && !acc) return <div className="wl"><div className="wl-wait">Conferindo seu acesso…</div></div>
   if (admin && acc && acc.ok && acc.admin) return <Admin onClose={() => { location.hash = ''; setAdmin(false) }} />
