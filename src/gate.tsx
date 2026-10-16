@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import App from './App'
 import Admin from './admin'
-import { accessEnabled, checkAccess, REASON_TEXT, sb, sendLink, signOut, wantTrial, type Access } from './access'
+import { accessEnabled, checkAccess, REASON_TEXT, sb, sendLink, signOut, verifyCode, wantTrial, type Access } from './access'
 
 const SEEN = 'palco-keys.welcome'
 const base = import.meta.env.BASE_URL
@@ -142,8 +142,32 @@ async function forceSignOut() {
   location.href = location.pathname + '?v=' + Date.now()
 }
 
-/** Só na versão de teste: mostra que a conta logada não é de administrador e deixa sair dela. */
-function TestBlocked() {
+/** Só na versão de teste: entrar como administrador direto nesta tela, com o código de 6 dígitos do e-mail. */
+function TestLogin({ acc }: { acc: Access | null }) {
+  const [email, setEmail] = useState('')
+  const [code, setCode] = useState('')
+  const [sent, setSent] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const [msg, setMsg] = useState('')
+  const nonAdmin = !!(acc && acc.ok && !acc.admin)
+
+  const send = async () => {
+    if (!/^\S+@\S+\.\S+$/.test(email)) { setMsg('Digite um e-mail válido.'); return }
+    setBusy(true); setMsg(''); wantTrial(false)
+    const err = await sendLink(email)
+    setBusy(false)
+    if (err) setMsg('Não consegui enviar: ' + err)
+    else setSent(true)
+  }
+  const verify = async () => {
+    if (code.trim().length < 6) { setMsg('Digite o código de 6 números.'); return }
+    setBusy(true); setMsg('')
+    const err = await verifyCode(email, code)
+    setBusy(false)
+    if (err) setMsg('Código não confere: ' + err)
+    else location.reload()
+  }
+
   return (
     <div className="wl">
       <header className="wl-top">
@@ -152,9 +176,24 @@ function TestBlocked() {
       </header>
       <main className="wl-main">
         <div className="wl-login">
-          <h2>Teste: conta sem administrador</h2>
-          <p>Esta sessão não é de administrador. Saia desta conta e entre com o e-mail de administrador.</p>
-          <button className="wl-btn" onClick={() => forceSignOut()}>Sair desta conta</button>
+          <h2>Teste: entrar como administrador</h2>
+          {nonAdmin && <p>Esta sessão não é de administrador. Entre abaixo com o e-mail de administrador.</p>}
+          {!sent ? (
+            <>
+              <p>Digite o e-mail de administrador. Vamos enviar um código de 6 números.</p>
+              <input type="email" inputMode="email" autoComplete="email" placeholder="seu@email.com" value={email} onChange={(e) => setEmail(e.target.value)} />
+              <button className="wl-btn" disabled={busy} onClick={send}>{busy ? 'Enviando…' : 'Enviar código'}</button>
+            </>
+          ) : (
+            <>
+              <p>Digite o código de 6 números que chegou em <b>{email}</b>.</p>
+              <input inputMode="numeric" autoComplete="one-time-code" placeholder="000000" value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))} />
+              <button className="wl-btn" disabled={busy} onClick={verify}>{busy ? 'Confirmando…' : 'Entrar'}</button>
+              <button className="wl-link" onClick={() => { setSent(false); setCode('') }}>Usar outro e-mail</button>
+            </>
+          )}
+          {msg && <p className="wl-err">{msg}</p>}
+          {nonAdmin && <button className="wl-link" onClick={() => forceSignOut()}>Sair desta conta</button>}
         </div>
       </main>
     </div>
@@ -194,7 +233,7 @@ export default function Gate() {
 
   if (unsupportedDevice()) return <Unsupported />
   // Teste de iPad: só a conta de administrador passa; os demais veem a mensagem de aparelho não compatível.
-  if (import.meta.env.VITE_ALLOW_IPAD === '1' && acc && acc.ok && !acc.admin) return <TestBlocked />
+  if (import.meta.env.VITE_ALLOW_IPAD === '1' && accessEnabled && acc && !(acc.ok && acc.admin)) return <TestLogin acc={acc} />
 
   if (accessEnabled && !acc) return <div className="wl"><div className="wl-wait">Conferindo seu acesso…</div></div>
   if (admin && acc && acc.ok && acc.admin) return <Admin onClose={() => { location.hash = ''; setAdmin(false) }} />
