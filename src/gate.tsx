@@ -130,6 +130,25 @@ function Unsupported() {
   )
 }
 
+/** Só na versão de teste: mostra que a conta logada não é de administrador e deixa sair dela. */
+function TestBlocked() {
+  return (
+    <div className="wl">
+      <header className="wl-top">
+        <img src={base + 'icon-192.png'} alt="" width={36} height={36} />
+        <span className="wl-brand">Palco <span>Keys</span></span>
+      </header>
+      <main className="wl-main">
+        <div className="wl-login">
+          <h2>Teste: conta sem administrador</h2>
+          <p>Esta sessão não é de administrador. Saia desta conta e entre com o e-mail de administrador.</p>
+          <button className="wl-btn" onClick={async () => { await signOut(); location.reload() }}>Sair desta conta</button>
+        </div>
+      </main>
+    </div>
+  )
+}
+
 /** Porteiro do app: boas-vindas na primeira vez, confere o acesso e abre o app. */
 export default function Gate() {
   const [acc, setAcc] = useState<Access | null>(null)
@@ -163,7 +182,7 @@ export default function Gate() {
 
   if (unsupportedDevice()) return <Unsupported />
   // Teste de iPad: só a conta de administrador passa; os demais veem a mensagem de aparelho não compatível.
-  if (import.meta.env.VITE_ALLOW_IPAD === '1' && acc && acc.ok && !acc.admin) return <Unsupported />
+  if (import.meta.env.VITE_ALLOW_IPAD === '1' && acc && acc.ok && !acc.admin) return <TestBlocked />
 
   if (accessEnabled && !acc) return <div className="wl"><div className="wl-wait">Conferindo seu acesso…</div></div>
   if (admin && acc && acc.ok && acc.admin) return <Admin onClose={() => { location.hash = ''; setAdmin(false) }} />
