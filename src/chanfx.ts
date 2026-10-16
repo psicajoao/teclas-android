@@ -176,7 +176,9 @@ export class ChanFx {
     this.comp.ratio.setTargetAtTime(k.ratio, t, 0.015)
     this.comp.attack.setTargetAtTime(Math.min(1, k.attack / 1000), t, 0.015)
     this.comp.release.setTargetAtTime(Math.min(1, k.release / 1000), t, 0.015)
-    sm(this.vol.gain, db(c.set.volRange * Math.max(0, Math.min(1, volFrac))))
+    // Folga de volume: o EQ que reforça uma faixa não pode estourar as notas fortes.
+    const boost = c.eq.on ? Math.max(0, ...c.eq.bands) : 0
+    sm(this.vol.gain, db(c.set.volRange * Math.max(0, Math.min(1, volFrac)) - boost * 0.9))
     this.eq.forEach((b, i) => sm(b.gain, c.eq.on ? c.eq.bands[i] : 0))
     sm(this.panner.pan, Math.max(-1, Math.min(1, c.set.pan / 100)))
   }

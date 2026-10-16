@@ -52,12 +52,14 @@ if (import.meta.env.VITE_ALLOW_IPAD === '1') {
   const b = document.createElement('div')
   b.style.cssText = 'position:fixed;left:6px;bottom:6px;z-index:99999;background:#000c;color:#7fe;font:11px/1.3 monospace;padding:4px 7px;border-radius:6px;pointer-events:none'
   document.body.appendChild(b)
+  let clip = 0
+  setInterval(() => { if (engine.peak() > 0.98) clip = Date.now() }, 50)
   setInterval(() => {
     const c = engine.ctx as (AudioContext & { outputLatency?: number }) | null
     if (!c) { b.textContent = 'áudio: ligando…'; return }
     const ms = (v?: number) => (v == null ? 'n/d' : Math.round(v * 1000) + ' ms')
     const lag = (window as unknown as { __lag?: number[] }).__lag
     const l = lag && lag.length ? ` · MIDI ${Math.round(Math.min(...lag))}–${Math.round(Math.max(...lag))} ms` : ' · MIDI: toque'
-    b.textContent = `base ${ms(c.baseLatency)} · saída ${ms(c.outputLatency)} · ${c.sampleRate} Hz · ${c.state}${l}`
+    b.textContent = `base ${ms(c.baseLatency)} · saída ${ms(c.outputLatency)} · ${c.sampleRate} Hz · ${c.state}${l}${Date.now() - clip < 4000 ? ' · ESTOUROU' : ''}`
   }, 1000)
 }
