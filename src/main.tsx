@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client'
 import '@fontsource-variable/bricolage-grotesque'
 import '@fontsource/righteous/latin-400.css'
 import Gate from './gate'
+import { engine } from './engine'
 
 /** Celular (qualquer lado): o app roda dentro de um quadro. Em pé, o quadro é girado; deitado, fica reto.
  *  Ao virar o aparelho só o quadro se reajusta, sem recarregar a página (não atrapalha a digitação). */
@@ -44,4 +45,17 @@ if ('serviceWorker' in navigator && import.meta.env.PROD) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register(import.meta.env.BASE_URL + 'sw.js').catch(() => {})
   })
+}
+
+// Só na versão de teste: mostra a latência que o aparelho informa, para medir em vez de adivinhar.
+if (import.meta.env.VITE_ALLOW_IPAD === '1') {
+  const b = document.createElement('div')
+  b.style.cssText = 'position:fixed;left:6px;bottom:6px;z-index:99999;background:#000c;color:#7fe;font:11px/1.3 monospace;padding:4px 7px;border-radius:6px;pointer-events:none'
+  document.body.appendChild(b)
+  setInterval(() => {
+    const c = engine.ctx as (AudioContext & { outputLatency?: number }) | null
+    if (!c) { b.textContent = 'áudio: ligando…'; return }
+    const ms = (v?: number) => (v == null ? 'n/d' : Math.round(v * 1000) + ' ms')
+    b.textContent = `base ${ms(c.baseLatency)} · saída ${ms(c.outputLatency)} · ${c.sampleRate} Hz · ${c.state}`
+  }, 1000)
 }
