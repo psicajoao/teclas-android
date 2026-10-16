@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { engine, latencyLevel, LATENCY_KEY, type LatencyLevel } from './engine'
+import { engine } from './engine'
 import { useValue } from './signal'
 import { bindingsValue, waitingValue, lastMsgValue, setBinding, clearAll, describeBinding, learnOpen } from './learn'
 import { midiConf, setMidiConf } from './midiconf'
@@ -148,38 +148,6 @@ function kindOfOutput(label: string) {
   return { t: '', warn: false }
 }
 
-/** Escolha de latência: baixa, média ou alta. Para valer, o áudio é reiniciado (a página recarrega). */
-function LatencyChoice() {
-  const [lvl, setLvl] = useState<LatencyLevel>(() => latencyLevel())
-  const [changed, setChanged] = useState(false)
-  const pick = (v: LatencyLevel) => {
-    try { localStorage.setItem(LATENCY_KEY, v) } catch { /* ok */ }
-    setLvl(v)
-    setChanged(true)
-  }
-  const opts: { v: LatencyLevel; t: string }[] = [
-    { v: 'baixa', t: 'Baixa' },
-    { v: 'media', t: 'Média' },
-    { v: 'alta', t: 'Alta' },
-  ]
-  return (
-    <div className="set-card">
-      <h3>Latência do áudio</h3>
-      <p><small>Baixa responde mais rápido, mas pode chiar em aparelhos mais fracos. Alta é mais estável, com mais atraso. Use a que sentir melhor no seu controlador.</small></p>
-      <div className="tabs" role="radiogroup" aria-label="Latência do áudio">
-        {opts.map((o) => (
-          <button key={o.v} role="radio" aria-checked={lvl === o.v} className={lvl === o.v ? 'on' : ''} onClick={() => pick(o.v)}>{o.t}</button>
-        ))}
-      </div>
-      {changed && (
-        <p>
-          <button className="ghost" onClick={() => location.reload()}>Reiniciar o áudio para aplicar</button>
-        </p>
-      )}
-    </div>
-  )
-}
-
 function AudioTab({ latency }: { latency: { handler: number; output: number } | null }) {
   const [, tick] = useState(0)
   const [outs, setOuts] = useState<MediaDeviceInfo[]>([])
@@ -213,7 +181,6 @@ function AudioTab({ latency }: { latency: { handler: number; output: number } | 
   }
   return (
     <div className="set-body">
-      <LatencyChoice />
       <div className="set-card">
         <h3>Como o áudio está sendo usado</h3>
         <dl>
