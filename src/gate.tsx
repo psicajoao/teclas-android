@@ -162,7 +162,7 @@ export default function Gate() {
 
   if (unsupportedDevice()) return <Unsupported />
   // Teste de iPad: só a conta de administrador passa; os demais veem a mensagem de aparelho não compatível.
-  if (import.meta.env.VITE_ALLOW_IPAD === '1' && isIpad() && acc && !(acc.ok && acc.admin) && (acc.ok || acc.reason !== 'no_session')) return <Unsupported />
+  if (import.meta.env.VITE_ALLOW_IPAD === '1' && isIpad() && acc && acc.ok && !acc.admin) return <Unsupported />
 
   if (accessEnabled && !acc) return <div className="wl"><div className="wl-wait">Conferindo seu acesso…</div></div>
   if (admin && acc && acc.ok && acc.admin) return <Admin onClose={() => { location.hash = ''; setAdmin(false) }} />
