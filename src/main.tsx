@@ -53,15 +53,27 @@ if (import.meta.env.VITE_ALLOW_IPAD === '1') {
   b.style.cssText = 'position:fixed;left:6px;bottom:6px;z-index:99999;background:#000c;color:#7fe;font:11px/1.3 monospace;padding:4px 7px;border-radius:6px;'
   document.body.appendChild(b)
   const modes = ['playback', 'ambient', 'auto', 'play-and-record']
-  b.addEventListener('pointerdown', (e) => {
+  let taps = 0
+  let err = ''
+  const onTap = (e: Event) => {
     e.stopPropagation()
+    taps++
+    err = ''
     let cur = 'playback'
     try { cur = localStorage.getItem('pk.as') || 'playback' } catch { /* */ }
     const next = modes[(modes.indexOf(cur) + 1) % modes.length]
     try { localStorage.setItem('pk.as', next) } catch { /* */ }
-    try { (navigator as unknown as { audioSession: { type: string } }).audioSession.type = next } catch { /* */ }
+    try {
+      const as = (navigator as unknown as { audioSession?: { type: string } }).audioSession
+      if (!as) err = 'sem audioSession'
+      else as.type = next
+    } catch (x) { err = String(x).slice(0, 60) }
     void engine.ctx?.resume().catch(() => {})
-  })
+  }
+  b.style.pointerEvents = 'auto'
+  b.style.padding = '10px 12px'
+  b.addEventListener('pointerdown', onTap)
+  b.addEventListener('touchstart', (e) => e.stopPropagation(), { passive: true })
   let clip = 0
   setInterval(() => { if (engine.peak() > 0.98) clip = Date.now() }, 50)
   setInterval(() => {
@@ -70,6 +82,6 @@ if (import.meta.env.VITE_ALLOW_IPAD === '1') {
     const ms = (v?: number) => (v == null ? 'n/d' : Math.round(v * 1000) + ' ms')
     const lag = (window as unknown as { __lag?: number[] }).__lag
     const l = lag && lag.length ? ` · MIDI ${Math.round(Math.min(...lag))}–${Math.round(Math.max(...lag))} ms` : ' · MIDI: toque'
-    b.textContent = `base ${ms(c.baseLatency)} · saída ${ms(c.outputLatency)} · ${c.sampleRate} Hz · ${c.state}${l}${Date.now() - clip < 4000 ? ' · ESTOUROU' : ''} · modo: ${(navigator as unknown as { audioSession?: { type: string } }).audioSession?.type ?? 'sem suporte'} (toque aqui para trocar)`
+    b.textContent = `base ${ms(c.baseLatency)} · saída ${ms(c.outputLatency)} · ${c.sampleRate} Hz · ${c.state}${l}${Date.now() - clip < 4000 ? ' · ESTOUROU' : ''} · modo: ${(navigator as unknown as { audioSession?: { type: string } }).audioSession?.type ?? 'sem suporte'} (toque aqui para trocar) · toques ${taps}${err ? ' · erro: ' + err : ''}`
   }, 1000)
 }
