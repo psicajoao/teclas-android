@@ -1,0 +1,17 @@
+{
+  "name": "palco-ios",
+  "version": "1.0.0",
+  "private": true,
+  "dependencies": {
+    "@capacitor/core": "^8.5.3",
+    "@capacitor/ios": "^8.5.3"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^8.5.3"
+  },
+  "scripts": {
+    "web": "cd .. && VITE_ALLOW_IPAD=1 npx vite build --outDir palco-ios/www --emptyOutDir",
+    "sync": "npm run web && cap sync ios",
+    "abrir": "cap open ios"
+  }
+}
