@@ -389,7 +389,8 @@ function Picker({ onPick, onClose, padMode }: { onPick: (id: string | null) => v
   const ver = useValue(customVersion)
   const hasCustom = ver > 0 && TIMBRES.some((t) => t.group === CUSTOM_GROUP)
   const hasPack = ver >= 0 && TIMBRES.some((t) => t.group === PACK_GROUP)
-  const groups = [CUSTOM_GROUP, ...(padMode ? GROUPS.filter((g) => g !== 'Bateria') : GROUPS).filter((g) => g !== PACK_GROUP || hasPack)]
+  const ordered = [PACK_GROUP, ...GROUPS.filter((g) => g !== PACK_GROUP)] // Worship vem primeiro, como atalho
+  const groups = [CUSTOM_GROUP, ...(padMode ? ordered.filter((g) => g !== 'Bateria') : ordered).filter((g) => g !== PACK_GROUP || hasPack)]
   const [group, setGroup] = useState<string>(hasCustom ? CUSTOM_GROUP : 'Favoritos')
   const [q, setQ] = useState('')
   const [bank, setBank] = useState<number | null>(null)
