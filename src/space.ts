@@ -13,30 +13,57 @@ export const hasSpace = (s: SpaceCfg | undefined) => !!s && (s.rev > 0 || s.dly 
 const SHIFT_SRC = `
 registerProcessor('palco-shift', class extends AudioWorkletProcessor {
   static get parameterDescriptors() { return [{ name: 'ratio', defaultValue: 2, minValue: 0.25, maxValue: 4, automationRate: 'k-rate' }] }
-  constructor() { super(); this.W = 4096; this.size = 16384; this.buf = [new Float32Array(16384), new Float32Array(16384)]; this.w = 0; this.p = 0 }
+  constructor() {
+    super()
+    this.W = 4096; this.size = 16384; this.mask = 16383
+    this.bl = new Float32Array(16384); this.br = new Float32Array(16384)
+    this.w = 0; this.p = 0; this.quiet = 0
+    this.win = new Float32Array(4097)
+    for (let i = 0; i <= 4096; i++) { const s = Math.sin(Math.PI * i / 4096); this.win[i] = s * s }
+  }
   process(inputs, outputs, params) {
-    const inp = inputs[0], out = outputs[0]
+    const out = outputs[0]
     if (!out || !out.length) return true
-    const r = params.ratio[0], W = this.W, size = this.size, mask = size - 1
+    const inp = inputs[0]
     const n = out[0].length
+    const inL = inp && inp[0] ? inp[0] : null
+    const inR = inp && inp[1] ? inp[1] : inL
+    // silêncio prolongado: não gasta processador (a cauda da realimentação já acabou)
+    let pk = 0
+    if (inL) for (let i = 0; i < n; i++) { const a = inL[i] < 0 ? -inL[i] : inL[i]; if (a > pk) pk = a }
+    if (pk < 1e-6) { this.quiet++ } else this.quiet = 0
+    if (this.quiet > 600) { if (this.quiet === 601) { this.bl.fill(0); this.br.fill(0) } return true }
+    const r = params.ratio[0], W = this.W, size = this.size, mask = this.mask, win = this.win
+    const oL = out[0], oR = out[1] || out[0]
+    const bl = this.bl, br = this.br
+    let w = this.w, p = this.p
+    const step = (1 - r) / W
     for (let i = 0; i < n; i++) {
-      for (let c = 0; c < out.length; c++) this.buf[c][this.w] = inp[c] ? inp[c][i] : inp[0] ? inp[0][i] : 0
-      const p = this.p
+      let xl = inL ? inL[i] : 0, xr = inR ? inR[i] : 0
+      if (xl < 1e-18 && xl > -1e-18) xl = 0
+      if (xr < 1e-18 && xr > -1e-18) xr = 0
+      bl[w] = xl; br[w] = xr
       let pB = p + 0.5; if (pB >= 1) pB -= 1
-      const wA = Math.sin(Math.PI * p) ** 2, wB = Math.sin(Math.PI * pB) ** 2
-      for (let c = 0; c < out.length; c++) {
-        const b = this.buf[c]
-        const read = (d) => { const pos = this.w - d + size; const i0 = Math.floor(pos); const f = pos - i0; return b[i0 & mask] * (1 - f) + b[(i0 + 1) & mask] * f }
-        out[c][i] = wA * read(p * W) + wB * read(pB * W)
-      }
-      this.w = (this.w + 1) & mask
-      let np = p + (1 - r) / W
-      if (np >= 1) np -= 1; if (np < 0) np += 1
-      this.p = np
+      const wA = win[(p * 4096) | 0], wB = win[(pB * 4096) | 0]
+      let pos = w - p * W + size
+      let i0 = pos | 0, f = pos - i0
+      const al = bl[i0 & mask] * (1 - f) + bl[(i0 + 1) & mask] * f
+      const ar = br[i0 & mask] * (1 - f) + br[(i0 + 1) & mask] * f
+      pos = w - pB * W + size
+      i0 = pos | 0; f = pos - i0
+      const bL2 = bl[i0 & mask] * (1 - f) + bl[(i0 + 1) & mask] * f
+      const bR2 = br[i0 & mask] * (1 - f) + br[(i0 + 1) & mask] * f
+      oL[i] = wA * al + wB * bL2
+      oR[i] = wA * ar + wB * bR2
+      w = (w + 1) & mask
+      p += step
+      if (p >= 1) p -= 1; else if (p < 0) p += 1
     }
+    this.w = w; this.p = p
     return true
   }
-})`
+})
+`
 
 /** Resposta de impulso de sala/igreja: ruído com decaimento e escurecimento progressivo dos agudos. */
 function makeIR(ctx: BaseAudioContext, seconds: number, decay: number, dark: number): AudioBuffer {
@@ -70,9 +97,9 @@ export class SpaceBus {
     // reverberação profunda
     this.rev = g()
     const verb = ctx.createConvolver()
-    verb.buffer = makeIR(ctx, 4.8, 2.6, 0.85)
+    verb.buffer = makeIR(ctx, 3.2, 3.0, 0.85)
     this.rev.connect(verb)
-    verb.connect(g(0.9)).connect(out)
+    verb.connect(g(1.6)).connect(out)
     // eco pingue-pongue em colcheia pontuada (acompanha o andamento)
     this.dly = g()
     this.dL = ctx.createDelay(2)
@@ -110,18 +137,18 @@ export class SpaceBus {
     hp.frequency.value = 260
     const shift = new AudioWorkletNode(ctx, 'palco-shift', { numberOfInputs: 1, numberOfOutputs: 1, outputChannelCount: [2] })
     const verb = ctx.createConvolver()
-    verb.buffer = makeIR(ctx, 4.2, 3.4, 0.9)
+    verb.buffer = makeIR(ctx, 2.4, 3.6, 0.9)
     const lp = ctx.createBiquadFilter()
     lp.type = 'lowpass'
     lp.frequency.value = 5500
     const fb = ctx.createGain()
-    fb.gain.value = 0.2
+    fb.gain.value = 0.22
     const loop = ctx.createDelay(0.5)
     loop.delayTime.value = 0.03
     const direct = ctx.createGain()
     direct.gain.value = 0.55
     const wet = ctx.createGain()
-    wet.gain.value = 1.0
+    wet.gain.value = 2.0
     // a cópia agravada é suavizada antes da reverb (tira a aspereza do efeito)
     const soft = ctx.createBiquadFilter()
     soft.type = 'lowpass'
