@@ -78,6 +78,7 @@ if (import.meta.env.VITE_ALLOW_IPAD === '1') {
   // Comparação direta: um bipe simples do navegador (sem o motor de sons do app) contra uma nota do piano do app.
   const bar = document.createElement('div')
   bar.style.cssText = 'position:fixed;left:50%;top:6px;transform:translateX(-50%);z-index:99999;display:flex;gap:10px'
+  let ready13 = false
   const mk = (label: string, fn: () => void) => {
     const x = document.createElement('button')
     x.textContent = label
@@ -99,8 +100,17 @@ if (import.meta.env.VITE_ALLOW_IPAD === '1') {
     o.stop(c.currentTime + 0.3)
   })
   mk('PIANO DO APP', () => {
-    engine.noteOn(84, 110)
-    window.setTimeout(() => engine.noteOff(84), 250)
+    // canal 13 só para o teste: piano de cauda do GM, volume cheio, sem reverb
+    if (!ready13) {
+      ready13 = true
+      engine.program(0, 13)
+      engine.cc(7, 100, 13)
+      engine.cc(11, 127, 13)
+      engine.cc(91, 0, 13)
+      engine.cc(93, 0, 13)
+    }
+    engine.noteOn(72, 100, 13)
+    window.setTimeout(() => engine.noteOff(72, 13), 250)
   })
   document.body.appendChild(bar)
   let clip = 0
