@@ -441,7 +441,8 @@ input[type=range] { height: 18px; }
 
 /* ===== topo em uma linha, menu, panic ===== */
 .topbar { align-items: flex-end; gap: 10px 16px; }
-.topbar h1 { align-self: center; font-size: 1.25rem; white-space: nowrap; }
+.topbar h1 { align-self: center; font-size: 1.25rem; white-space: nowrap; display: flex; align-items: center; gap: 9px; }
+.topbar h1 .mark { width: 36px; height: 36px; border-radius: 9px; box-shadow: 0 0 14px #b026ff55; flex: none; }
 .topbar .tempo { align-self: flex-end; }
 .topbar .ctl select, .topbar .stepper, .topbar .ctl .ghost { height: 44px; }
 .topbar .ctl select { padding: 0 10px; min-width: 7em; }
@@ -619,7 +620,8 @@ input, select, textarea { -webkit-user-select: text; user-select: text; }
 .sl-item { padding: 8px; gap: 8px; }
 .sl-item .k { min-width: 28px; font-size: .78rem; padding: 4px 0; }
 @media (min-width: 740px) and (orientation: landscape) {
-  .fit .topbar h1 { display: block; font-size: 1.05rem; margin: 0 4px 0 0; align-self: center; }
+  .fit .topbar h1 { display: flex; font-size: 1.05rem; margin: 0 4px 0 0; align-self: center; }
+  .fit .topbar h1 .mark { width: 30px; height: 30px; border-radius: 8px; }
   .fit .topbar .tempo { margin-left: auto; }
   .fit .topbar .ctl.master { margin-left: 0; }
   .fit .topbar .panic { margin-left: 0; width: 44px; height: 44px; align-self: center; }
@@ -1218,7 +1220,8 @@ h1 span { color: var(--cyan); text-shadow: 0 0 16px #00e5ff77; }
   .fit .padband .padfader .fader { height: 34px; width: 24px; }
   .fit .sec { min-height: 36px; font-size: .8rem; }
   .fit .qbtn { min-height: 36px; width: 30px; min-width: 30px; }
-  .fit .topbar h1 { display: block; font-size: .95rem; margin: 0 4px 0 2px; white-space: nowrap; flex: none; align-self: center; }
+  .fit .topbar h1 { display: flex; font-size: .95rem; margin: 0 4px 0 2px; white-space: nowrap; flex: none; align-self: center; }
+  .fit .topbar h1 .mark { width: 32px; height: 32px; border-radius: 8px; }
   .fit .topbar .tempo { margin-left: auto; }
   .fit .topbar .panic { margin-left: 0; right: 34px; }
 }

@@ -1450,7 +1450,10 @@ export default function App() {
       )}
       <header className="topbar">
         <h1>
-          Palco <span>Keys</span>
+          <img className="mark" src={import.meta.env.BASE_URL + 'icon-192.png'} alt="" width={36} height={36} />
+          <span className="word">
+            Palco <span>Keys</span>
+          </span>
         </h1>
         {ready && (
           <>
