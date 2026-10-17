@@ -1,10 +1,12 @@
+import { noSpace, hasSpace, type SpaceCfg, type SpaceBus } from './space'
+
 /** Página de som por canal: Compressor (FX A), Equalizador (FX B) e Ajustes. */
 export type CompCfg = { on: boolean; inGain: number; attack: number; release: number; ratio: number; threshold: number; mix: number; outGain: number }
 export type EqCfg = { on: boolean; bands: number[] }
 export type SetCfg = { blockSustain: boolean; transpose: number; voices: number; volRange: number; sampler: number; pan: number }
 export type OdCfg = { drive: number; tone: number; level: number }
-export type SndCfg = { comp: CompCfg; eq: EqCfg; set: SetCfg; od?: OdCfg | null }
-export type SndPatch = { comp?: Partial<CompCfg>; eq?: Partial<EqCfg>; set?: Partial<SetCfg> }
+export type SndCfg = { comp: CompCfg; eq: EqCfg; set: SetCfg; od?: OdCfg | null; space: SpaceCfg }
+export type SndPatch = { comp?: Partial<CompCfg>; eq?: Partial<EqCfg>; set?: Partial<SetCfg>; space?: Partial<SpaceCfg> }
 
 export const EQ_FREQS = [60, 150, 400, 1000, 2400, 6000, 10000, 16000]
 export const EQ_LABELS = ['60 Hz', '150 Hz', '400 Hz', '1 kHz', '2,4 kHz', '6 kHz', '10 kHz', '16 kHz']
@@ -13,6 +15,7 @@ export const defaultSnd = (): SndCfg => ({
   comp: { on: false, inGain: 0, attack: 10, release: 150, ratio: 4, threshold: -24, mix: 100, outGain: 0 },
   eq: { on: false, bands: Array(8).fill(0) },
   set: { blockSustain: false, transpose: 0, voices: 64, volRange: 0, sampler: 0, pan: 0 },
+  space: noSpace(),
 })
 
 /** Config completa de uma camada (completa o que falta com os padrões). */
@@ -21,13 +24,13 @@ export function sndOf(l: { snd?: SndPatch } | undefined): SndCfg {
   const s = l?.snd
   if (!s) return d
   const bands = Array.isArray(s.eq?.bands) ? d.eq.bands.map((v, i) => s.eq!.bands![i] ?? v) : d.eq.bands
-  return { comp: { ...d.comp, ...s.comp }, eq: { ...d.eq, ...s.eq, bands }, set: { ...d.set, ...s.set } }
+  return { comp: { ...d.comp, ...s.comp }, eq: { ...d.eq, ...s.eq, bands }, set: { ...d.set, ...s.set }, space: { ...d.space, ...s.space } }
 }
 
 export const hasSnd = (l: { snd?: SndPatch } | undefined) => {
   const c = sndOf(l)
   const d = defaultSnd()
-  return c.comp.on || c.eq.on || JSON.stringify(c.set) !== JSON.stringify(d.set)
+  return c.comp.on || c.eq.on || hasSpace(c.space) || JSON.stringify(c.set) !== JSON.stringify(d.set)
 }
 
 export const SND_PRESETS: { name: string; snd: SndPatch }[] = [
@@ -42,7 +45,7 @@ export const SND_PRESETS: { name: string; snd: SndPatch }[] = [
 ]
 
 /** Sem nada alterado: o canal vai direto para a saída, sem gastar processamento. */
-export const isNeutral = (c: SndCfg) => !c.od && !c.comp.on && !c.eq.on && c.set.pan === 0 && c.set.sampler === 0 && c.set.volRange === 0
+export const isNeutral = (c: SndCfg) => !c.od && !hasSpace(c.space) && !c.comp.on && !c.eq.on && c.set.pan === 0 && c.set.sampler === 0 && c.set.volRange === 0
 
 /** Curva de válvula: saturação suave com leve assimetria (harmônicos pares e ímpares, som de órgão/amp). */
 function driveCurve(k: number): Float32Array<ArrayBuffer> {
@@ -77,8 +80,19 @@ export class ChanFx {
   private vol: GainNode
   private eq: BiquadFilterNode[]
   private panner: StereoPannerNode
-  constructor(ctx: AudioContext, dest: AudioNode) {
+  private getSpace: () => SpaceBus
+  private sendRev: GainNode
+  private sendDly: GainNode
+  private sendShim: GainNode
+  constructor(ctx: AudioContext, dest: AudioNode, getSpace: () => SpaceBus) {
     this.ctx = ctx
+    this.getSpace = getSpace
+    this.sendRev = ctx.createGain()
+    this.sendDly = ctx.createGain()
+    this.sendShim = ctx.createGain()
+    this.sendRev.gain.value = 0
+    this.sendDly.gain.value = 0
+    this.sendShim.gain.value = 0
     const g = () => ctx.createGain()
     this.input = g()
     this.sampler = g()
@@ -120,13 +134,13 @@ export class ChanFx {
     })
     this.panner = ctx.createStereoPanner()
     this.dest = dest
-    this.wire(false, false, false, false)
+    this.wire(false, false, false, false, [false, false, false])
   }
   private dest: AudioNode
   private flags = ''
   /** Liga só o que está em uso (distorção, compressor, EQ, pan): o resto fica fora do grafo e não gasta processador. */
-  private wire(od: boolean, comp: boolean, eq: boolean, pan: boolean) {
-    const key = [od, comp, eq, pan].join()
+  private wire(od: boolean, comp: boolean, eq: boolean, pan: boolean, sends: boolean[]) {
+    const key = [od, comp, eq, pan, ...sends].join()
     if (key === this.flags) return
     this.flags = key
     const off = (n: AudioNode, to?: AudioNode) => { try { to ? n.disconnect(to) : n.disconnect() } catch { /* */ } }
@@ -139,18 +153,32 @@ export class ChanFx {
     if (comp) this.pre.connect(this.comp)
     let prev: AudioNode = this.vol
     if (eq) for (const b of this.eq) { prev.connect(b); prev = b }
-    if (pan) { prev.connect(this.panner); this.panner.connect(this.dest) } else prev.connect(this.dest)
+    let last: AudioNode = prev
+    if (pan) { prev.connect(this.panner); last = this.panner }
+    last.connect(this.dest)
+    // envios para o espaço (só ligados quando usados)
+    const sendNodes = [this.sendRev, this.sendDly, this.sendShim]
+    sendNodes.forEach((n) => off(n))
+    if (sends.some(Boolean)) {
+      const bus = this.getSpace()
+      const targets = [bus.rev, bus.dly, bus.shim]
+      sends.forEach((on, i) => { if (on) { sendNodes[i].connect(targets[i]); last.connect(sendNodes[i]) } })
+    }
   }
   private curveFor = -1
   dispose() {
-    try { this.input.disconnect(); this.vol.disconnect(); this.eq.forEach((b) => b.disconnect()); this.panner.disconnect() } catch { /* */ }
+    try { this.input.disconnect(); this.vol.disconnect(); this.eq.forEach((b) => b.disconnect()); this.panner.disconnect(); this.sendRev.disconnect(); this.sendDly.disconnect(); this.sendShim.disconnect() } catch { /* */ }
   }
   /** `volFrac` = posição do fader (0–1), usada pela "faixa do fader de volume". */
   apply(c: SndCfg, volFrac: number) {
     const t = this.ctx.currentTime
     const sm = (p: AudioParam, v: number) => p.setTargetAtTime(v, t, 0.015)
     const k = c.comp
-    this.wire(!!c.od, k.on && k.mix > 0, c.eq.on, c.set.pan !== 0)
+    const sp = c.space
+    this.wire(!!c.od, k.on && k.mix > 0, c.eq.on, c.set.pan !== 0, [sp.rev > 0, sp.dly > 0, sp.shim > 0])
+    sm(this.sendRev.gain, sp.rev)
+    sm(this.sendDly.gain, sp.dly)
+    sm(this.sendShim.gain, sp.shim)
     sm(this.sampler.gain, db(c.set.sampler))
     const od = c.od
     if (od) {

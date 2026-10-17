@@ -38,11 +38,21 @@ export const PACK: PackTimbre[] = [
 
 // Timbres de louvor feitos sobre o banco que já vem dentro do app (GeneralUser GS, banco 0 do GM):
 // aparecem para todos, sem baixar nada. Cada um tem equalizador (60 Hz … 16 kHz) e vozes ajustados.
-const PAD = (extra?: Partial<SndPatch['set']>) => ({ voices: 32, ...extra })
+const PAD = (extra?: Partial<NonNullable<SndPatch['set']>>) => ({ voices: 32, ...extra })
 export const PACK_BUILTIN: PackTimbre[] = [
+  // Pianos com espaço (reverb profundo e eco no andamento)
+  { id: 'pk.piano-profundo', name: 'Piano Cauda Profundo', program: 0, snd: { eq: { on: true, bands: [3, 2, 1, 0, 0, -1, -1, -2] }, space: { rev: 0.8, dly: 0, shim: 0 }, set: PAD() } },
+  { id: 'pk.piano-eco', name: 'Piano Eco Ambiente', program: 0, snd: { eq: { on: true, bands: [3, 2, 1, 0, 0, -1, -1, -2] }, space: { rev: 0.6, dly: 0.4, shim: 0 }, set: PAD() } },
+  { id: 'pk.epiano-ambiente', name: 'Piano Elétrico Ambiente', program: 4, snd: { eq: { on: true, bands: [2, 2, 1, 0, -1, -2, -3, -4] }, comp: { on: true, ratio: 2, threshold: -18 }, space: { rev: 0.55, dly: 0.35, shim: 0 }, set: PAD() } },
+  // Pads com shimmer
+  { id: 'pk.pad-shimmer-celestial', name: 'Pad Shimmer Celestial', program: 94, snd: { eq: { on: true, bands: [0, 0, 0, -1, 0, 1, 1, 1] }, space: { rev: 0.35, dly: 0, shim: 0.8 }, set: PAD() } },
+  { id: 'pk.pad-shimmer-quente', name: 'Pad Shimmer Quente', program: 89, snd: { eq: { on: true, bands: [1, 1, 0, -1, -1, 0, 0, -1] }, space: { rev: 0.3, dly: 0, shim: 0.6 }, set: PAD() } },
+  // Órgãos com shimmer
+  { id: 'pk.orgao-shimmer', name: 'Órgão Shimmer Celestial', program: 19, snd: { eq: { on: true, bands: [2, 2, 0, -1, 0, 1, 1, 0] }, space: { rev: 0.4, dly: 0, shim: 0.55 }, set: PAD() } },
+  { id: 'pk.hammond-shimmer', name: 'Órgão Hammond Shimmer', program: 16, snd: { eq: { on: true, bands: [1, 1, 0, 0, 1, 1, 0, -1] }, space: { rev: 0.3, dly: 0, shim: 0.4 }, set: PAD() } },
   // Pads
   { id: 'pk.pad-calor', name: 'Pad Calor Worship', program: 89, snd: { eq: { on: true, bands: [1, 1, 0, -1, -1, 0, 0, -1] }, set: PAD() } },
-  { id: 'pk.pad-halo', name: 'Pad Halo Celestial', program: 94, snd: { eq: { on: true, bands: [0, 0, 0, -1, 0, 1, 2, 2] }, set: PAD() } },
+  { id: 'pk.pad-halo', name: 'Pad Halo Celestial', program: 94, snd: { eq: { on: true, bands: [0, 0, 0, -1, 0, 1, 2, 2] }, space: { rev: 0.25, dly: 0, shim: 0.3 }, set: PAD() } },
   { id: 'pk.pad-fantasia', name: 'Pad Fantasia', program: 88, snd: { eq: { on: true, bands: [0, 0, -1, 0, 1, 2, 2, 1] }, set: PAD() } },
   { id: 'pk.pad-atmosfera', name: 'Pad Atmosfera', program: 99, snd: { eq: { on: true, bands: [1, 1, 0, 0, 0, 0, -1, -2] }, set: PAD() } },
   { id: 'pk.pad-vidro', name: 'Pad Vidro de Arco', program: 92, snd: { eq: { on: true, bands: [0, 0, 0, 0, 0, 1, 1, 0] }, set: PAD() } },

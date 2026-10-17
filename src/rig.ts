@@ -722,7 +722,7 @@ class Pad {
   private applyTone(ch: number) {
     engine.cc(74, clamp(this.bright + (this.mod * (127 - this.bright)) / 127), ch) // brilho (corte do filtro) + roda de modulação
     engine.cc(91, clamp(30 + this.shimmer * 0.75), ch) // reverb
-    engine.cc(93, clamp(this.shimmer * 0.9), ch) // chorus
+    engine.cc(93, clamp(this.shimmer * 0.6), ch) // chorus
   }
 
   setMod(v: number) {
@@ -735,6 +735,7 @@ class Pad {
     this.bright = bright
     this.shimmer = shimmer
     PAD_CH.forEach((ch) => this.applyTone(ch))
+    engine.setPadShimmer(PAD_CH, shimmer)
   }
 
   /** Define o timbre (programa GM) e o volume do pad. */

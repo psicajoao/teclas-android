@@ -3,7 +3,8 @@ import { createValue } from './signal'
 import { listBanks, getBankData, ensureMigrated, bankInfo, BANK_STEP, customStatus } from './bank'
 import { registerCustom } from './timbres'
 import type { BankMeta } from './bank'
-import { ChanFx, isNeutral } from './chanfx'
+import { ChanFx, isNeutral, defaultSnd } from './chanfx'
+import { SpaceBus } from './space'
 import type { SndCfg } from './chanfx'
 import { SynthVoices, synPreset } from './synth'
 import type { SynChan } from './synth'
@@ -36,7 +37,8 @@ export class Engine {
     }
     let fx = chain
     if (!fx) {
-      fx = new ChanFx((this.ctx ?? this.pendingCtx)!, out)
+      const ctx = (this.ctx ?? this.pendingCtx)!
+      fx = new ChanFx(ctx, out, () => (this.space ??= new SpaceBus(ctx, out)))
       this.chains[ch] = fx
       synth.disconnectChannel(out, ch)
       synth.connectChannel(fx.input, ch)
@@ -44,6 +46,16 @@ export class Engine {
     fx.apply(c, volFrac)
   }
   private pendingSynth: WorkletSynthesizer | null = null
+  private space: SpaceBus | null = null
+  /** Shimmer do pad contínuo (0–127): liga o shimmer de verdade nos canais do pad. */
+  setPadShimmer(chs: number[], v: number) {
+    const a = Math.pow(Math.max(0, Math.min(127, v)) / 127, 1.3)
+    for (const ch of chs) {
+      const c = defaultSnd()
+      c.space = { rev: a * 0.35, dly: 0, shim: a * 0.9 }
+      this.setChannelFx(ch, c, 1)
+    }
+  }
   private pendingCtx: AudioContext | null = null
   /** Sintetizadores próprios (pads e leads): patch de cada canal, ou null quando o canal toca SoundFont. */
   private synVoices: SynthVoices | null = null
@@ -244,7 +256,7 @@ export class Engine {
       await new Promise((r) => setTimeout(r, 2500))
     }
     const gt: Record<string, number> = {}
-    const base = { comp: { on: true, inGain: 0, attack: 10, release: 150, ratio: 1, threshold: 0, mix: 100, outGain: 0 }, eq: { on: false, bands: Array(8).fill(0) }, set: { blockSustain: false, transpose: 0, voices: 64, volRange: 0, sampler: 0, pan: 0 } }
+    const base = { comp: { on: true, inGain: 0, attack: 10, release: 150, ratio: 1, threshold: 0, mix: 100, outGain: 0 }, eq: { on: false, bands: Array(8).fill(0) }, set: { blockSustain: false, transpose: 0, voices: 64, volRange: 0, sampler: 0, pan: 0 }, space: { rev: 0, dly: 0, shim: 0 } }
     for (const g of [0, 12, -12]) {
       this.setChannelFx(13, { ...base, comp: { ...base.comp, outGain: g } }, 1)
       this.program(0, 13)
