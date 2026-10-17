@@ -113,6 +113,16 @@ if (import.meta.env.VITE_ALLOW_IPAD === '1') {
     window.setTimeout(() => engine.noteOff(72, 13), 250)
   })
   document.body.appendChild(bar)
+  // Travadas da tela: maior intervalo entre quadros nos últimos 10 segundos.
+  const gaps: { t: number; g: number }[] = []
+  let lastF = performance.now()
+  const frame = (now: number) => {
+    gaps.push({ t: now, g: now - lastF })
+    lastF = now
+    while (gaps.length && now - gaps[0].t > 10000) gaps.shift()
+    requestAnimationFrame(frame)
+  }
+  requestAnimationFrame(frame)
   let clip = 0
   setInterval(() => { if (engine.peak() > 0.98) clip = Date.now() }, 50)
   setInterval(() => {
@@ -122,9 +132,11 @@ if (import.meta.env.VITE_ALLOW_IPAD === '1') {
     const lag = (window as unknown as { __lag?: number[] }).__lag
     const l = lag && lag.length ? ` · MIDI ${Math.round(Math.min(...lag))}–${Math.round(Math.max(...lag))} ms` : ' · MIDI: toque'
     const kb = (window as unknown as { __kb?: { wait: number; proc: number }[] }).__kb
-    const k = kb && kb.length ? ` · TECLADO espera ${Math.round(Math.max(...kb.map((x) => x.wait)))} ms, envio ${Math.round(Math.max(...kb.map((x) => x.proc)))} ms` : ''
+    const k = kb && kb.length ? ` · TECLADO espera ${Math.round(kb[kb.length - 1].wait)} ms (pior ${Math.round(Math.max(...kb.map((x) => x.wait)))}), envio ${Math.round(Math.max(...kb.map((x) => x.proc)))} ms` : ''
     const bw = (window as unknown as { __bw?: number[] }).__bw
-    const bt = bw && bw.length ? ` · BOTÕES espera ${Math.round(Math.max(...bw))} ms` : ''
-    b.textContent = `base ${ms(c.baseLatency)} · saída ${ms(c.outputLatency)} · ${c.sampleRate} Hz · ${c.state}${l}${k}${bt}${Date.now() - clip < 4000 ? ' · ESTOUROU' : ''} · modo: ${(navigator as unknown as { audioSession?: { type: string } }).audioSession?.type ?? 'sem suporte'} (toque aqui para trocar) · toques ${taps}${err ? ' · erro: ' + err : ''}`
+    const bt = bw && bw.length ? ` · BOTÕES espera ${Math.round(bw[bw.length - 1])} ms (pior ${Math.round(Math.max(...bw))})` : ''
+    const worst = gaps.length ? Math.round(Math.max(...gaps.map((x) => x.g))) : 0
+    const stall = ` · TRAVADA ${worst} ms`
+    b.textContent = `base ${ms(c.baseLatency)} · saída ${ms(c.outputLatency)} · ${c.sampleRate} Hz · ${c.state}${l}${k}${bt}${stall}${Date.now() - clip < 4000 ? ' · ESTOUROU' : ''} · modo: ${(navigator as unknown as { audioSession?: { type: string } }).audioSession?.type ?? 'sem suporte'} (toque aqui para trocar) · toques ${taps}${err ? ' · erro: ' + err : ''}`
   }, 1000)
 }

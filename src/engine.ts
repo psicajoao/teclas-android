@@ -170,6 +170,8 @@ export class Engine {
   private customLoading: Promise<void> | null = null
   /** SoundFonts do usuário: carregados em segundo plano depois que o app já está tocando. */
   loadCustom(): Promise<void> {
+    // Teste: abrir a página com &sembancos=1 no endereço pula os SoundFonts extras (sem apagar nada).
+    if (import.meta.env.VITE_ALLOW_IPAD === '1' && location.search.includes('sembancos')) return Promise.resolve()
     try { if (localStorage.getItem('teclas-android.safe') === '1') return Promise.resolve() } catch { /* */ }
     if (!this.customLoading) this.customLoading = this.initCustom().catch(() => {})
     return this.customLoading
