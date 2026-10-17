@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow"><title>Teste vazio</title>
+<style>body{margin:0;background:#0a0612;color:#7fe;font:16px/1.5 ui-monospace,Menlo,monospace;padding:18px}
+button{font:700 16px system-ui;padding:14px 20px;margin:6px 8px 6px 0;border-radius:12px;border:2px solid #7fe;background:#102;color:#7fe}
+#o{white-space:pre-wrap;margin-top:14px;font-size:18px}</style></head>
+<body>
+<b>Página vazia: só mede travadas da tela</b>
+<div>Sem o Palco Keys. Deixe parada por 40 segundos e tire uma foto.</div>
+<div><button id="a">Ligar áudio mudo</button><button id="r">Zerar contagem</button></div>
+<div id="o">medindo…</div>
+<script>
+const t0=performance.now();let last=t0,gaps=[],n50=0,n100=0,total=0,ac=null;
+function f(now){const g=now-last;last=now;gaps.push({t:now,g});total++;if(g>50)n50++;if(g>100)n100++;
+  while(gaps.length&&now-gaps[0].t>10000)gaps.shift();requestAnimationFrame(f)}
+requestAnimationFrame(f);
+setInterval(()=>{const w=Math.round(Math.max(0,...gaps.map(x=>x.g)));const s=Math.round((performance.now()-t0)/1000);
+  document.getElementById('o').textContent='tempo: '+s+' s\nTRAVADA (últimos 10 s): '+w+' ms\nquadros acima de 50 ms: '+n50+'\nquadros acima de 100 ms: '+n100+'\náudio: '+(ac?ac.state:'desligado')},500);
+document.getElementById('r').onclick=()=>{n50=0;n100=0;gaps=[]};
+document.getElementById('a').onclick=()=>{if(ac)return;ac=new AudioContext({latencyHint:'interactive'});const o=ac.createOscillator(),g=ac.createGain();g.gain.value=0;o.connect(g).connect(ac.destination);o.start();ac.resume()};
+</script></body></html>
