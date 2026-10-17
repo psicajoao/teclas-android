@@ -52,6 +52,7 @@ export const TIMBRES: Timbre[] = [
   ...MELODIC,
   ...SYNTHS,
   ...PACK_BUILTIN.map((p) => ({ id: p.id, name: p.name, program: p.program, group: PACK_GROUP, snd: p.snd, origin: ORIGIN_GU })),
+  ...SYN_PRESETS.map((p) => ({ id: 'pk.syn-' + p.id, name: p.name, program: 0, group: PACK_GROUP, syn: p.id, origin: 'Palco Keys' })),
   ...DRUM_KITS.map(([program, name]) => ({ id: `drum${program}`, name, program, group: 'Bateria', drum: true })),
 ]
 

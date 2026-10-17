@@ -21,7 +21,12 @@ export type SynPreset = {
   reverb: number
   /** Volume do patch. */
   gain: number
+  /** Eco sincronizado com o andamento (colcheia pontuada): quanto volta (mix) e quantas repetições (fb). */
+  delay?: { mix: number; fb: number }
 }
+
+/** Andamento atual do app (o eco dos timbres acompanha). */
+export const synTempo = { bpm: 120 }
 
 export const SYN_PRESETS: SynPreset[] = [
   {
@@ -76,6 +81,42 @@ export const SYN_PRESETS: SynPreset[] = [
     ],
     attack: 0.08, release: 0.45, cutoff: 1900, q: 3, env: 1.3, vibRate: 5, vibDepth: 14, reverb: 0.4, gain: 0.35,
   },
+  {
+    // Lead brilhante de "supersaw" com eco em colcheia pontuada: o som clássico de introdução de louvor eletrônico.
+    id: 'lead-trance', name: 'Trance Lead',
+    oscs: [
+      { type: 'sawtooth', detune: -16, level: 0.32 },
+      { type: 'sawtooth', detune: -8, level: 0.32 },
+      { type: 'sawtooth', detune: 0, level: 0.32 },
+      { type: 'sawtooth', detune: 8, level: 0.32 },
+      { type: 'sawtooth', detune: 16, level: 0.32 },
+    ],
+    attack: 0.004, release: 0.4, cutoff: 3600, q: 1.1, env: 2.6, vibRate: 5.4, vibDepth: 5, reverb: 0.3, gain: 0.2,
+    delay: { mix: 0.38, fb: 0.42 },
+  },
+  {
+    // Lead de pluck curto e vivo, ótimo para frases repetidas com o eco.
+    id: 'lead-pluck', name: 'Pluck Brilhante',
+    oscs: [
+      { type: 'sawtooth', detune: -7, level: 0.4 },
+      { type: 'square', detune: 7, level: 0.3 },
+      { type: 'sawtooth', detune: 0, level: 0.3 },
+    ],
+    attack: 0.002, release: 0.22, cutoff: 1800, q: 2.2, env: 4.2, vibRate: 5, vibDepth: 3, reverb: 0.22, gain: 0.24,
+    delay: { mix: 0.34, fb: 0.38 },
+  },
+  {
+    // Pad largo e etéreo: várias serras abertas com um seno sustentando o fundo.
+    id: 'pad-etereo', name: 'Pad Etéreo Amplo',
+    oscs: [
+      { type: 'sawtooth', detune: -20, level: 0.26 },
+      { type: 'sawtooth', detune: -9, level: 0.26 },
+      { type: 'sawtooth', detune: 9, level: 0.26 },
+      { type: 'sawtooth', detune: 20, level: 0.26 },
+      { type: 'triangle', detune: 0, level: 0.4 },
+    ],
+    attack: 1.6, release: 3.2, cutoff: 1700, q: 0.4, env: 1.5, vibRate: 0.25, vibDepth: 5, reverb: 0.65, gain: 0.2,
+  },
 ]
 
 export const synPreset = (id: string) => SYN_PRESETS.find((p) => p.id === id) ?? null
@@ -104,6 +145,9 @@ export class SynthVoices {
   private bus: GainNode
   private wet: GainNode
   private voices: Voice[] = []
+  private dly: DelayNode
+  private fb: GainNode
+  private sends = new Map<GainNode, GainNode>()
 
   constructor(ctx: AudioContext, out: AudioNode) {
     this.ctx = ctx
@@ -117,6 +161,16 @@ export class SynthVoices {
     this.bus.connect(verb)
     verb.connect(this.wet)
     this.wet.connect(out)
+    // eco compartilhado (o tempo acompanha o andamento no momento de cada nota)
+    this.dly = ctx.createDelay(2)
+    const fb = ctx.createGain()
+    fb.gain.value = 0.4
+    const tone = ctx.createBiquadFilter()
+    tone.type = 'lowpass'
+    tone.frequency.value = 3800
+    this.dly.connect(tone).connect(fb).connect(this.dly)
+    tone.connect(this.bus)
+    this.fb = fb
   }
 
   noteOn(ch: number, note: number, velocity: number, p: SynPreset, st: SynChan) {
@@ -158,6 +212,14 @@ export class SynthVoices {
       oscs.push(osc)
     }
     flt.connect(amp).connect(this.bus)
+    if (p.delay) {
+      this.dly.delayTime.setTargetAtTime(Math.min(1.9, (60 / Math.max(40, synTempo.bpm)) * 0.75), now, 0.05)
+      this.fb.gain.setTargetAtTime(p.delay.fb, now, 0.05)
+      const send = this.ctx.createGain()
+      send.gain.value = p.delay.mix
+      amp.connect(send).connect(this.dly)
+      this.sends.set(amp, send)
+    }
 
     lfo.start(now)
     oscs.forEach((o) => o.start(now))
@@ -197,6 +259,7 @@ export class SynthVoices {
     v.lfo.stop(end)
     setTimeout(() => {
       try { v.amp.disconnect() } catch { /* */ }
+      this.sends.delete(v.amp)
     }, (v.release + 0.3) * 1000)
   }
 }

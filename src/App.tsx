@@ -18,6 +18,7 @@ import type { FxSlot } from './fx'
 import { audioOn } from './engine'
 import { TIMBRES, GROUPS, FAVORITES, CUSTOM_GROUP, customVersion } from './timbres'
 import { PACK_GROUP } from './pack'
+import { synTempo } from './synth'
 import { Drawer, SettingsPanel, LearnPanel } from './panels'
 import { waitingValue, lastMsgValue, setBinding, findAction, learnOpen } from './learn'
 import { roleOf, connectedIds } from './midiconf'
@@ -749,6 +750,7 @@ export default function App() {
     looper.beats = cfg.beats
     metro.bpm = bpm
     rig.bpm = bpm
+    synTempo.bpm = bpm
     metro.beats = cfg.beats
     metro.volume = cfg.click / 127
     metro.pan = cfg.clickPan ?? 0
