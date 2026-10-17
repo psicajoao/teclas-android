@@ -4,7 +4,7 @@ import { rig, pad } from './rig'
 import { rangeOf } from './rig'
 import type { Layer } from './rig'
 import { metro } from './metronome'
-import { bendValue, modValue, beatValue, rotorValue, useValue } from './signal'
+import { bendValue, modValue, beatValue, rotorValue, activeNotes, useValue } from './signal'
 import { parseMidi, noteName, DRUM_NAMES } from './midi'
 import { Library } from './library'
 import { addBanks, removeBank, getHidden, setHidden, slotOf, listBanks, MAX_BANKS, bankInfo } from './bank'
@@ -47,6 +47,29 @@ const TONES: { n: string; alt?: string }[] = [
   { n: 'F#', alt: 'Gb' }, { n: 'G' }, { n: 'G#', alt: 'Ab' }, { n: 'A' }, { n: 'A#', alt: 'Bb' }, { n: 'B' },
 ]
 const isBlack = (n: number) => [1, 3, 6, 8, 10].includes(n % 12)
+
+/** Nomes das notas apertadas. Só este trecho é redesenhado a cada tecla. */
+function NoteReadout({ label, idle }: { label: (n: number) => string; idle: string }) {
+  const active = useValue(activeNotes)
+  return <span>{active.size ? [...active].sort((a, b) => a - b).map(label).join('  ') : idle}</span>
+}
+
+/** Teclas da tela. Só este trecho é redesenhado a cada tecla apertada ou solta. */
+function KeyboardKeys({ whites, kbLast, label }: { whites: number[]; kbLast: number; label: (n: number) => string }) {
+  const active = useValue(activeNotes)
+  return (
+    <>
+      {whites.map((n) => (
+        <div key={n} data-n={n} className={'key white' + (active.has(n) ? ' down' : '')}>
+          {n % 12 === 0 && <span>{label(n)}</span>}
+          {!isBlack(n + 1) || n + 1 > kbLast ? null : (
+            <div data-n={n + 1} className={'key black' + (active.has(n + 1) ? ' down' : '')} />
+          )}
+        </div>
+      ))}
+    </>
+  )
+}
 /** Quantas teclas brancas existem abaixo da nota (posição em "teclas brancas"). */
 const wpos = (n: number) => Math.floor(n / 12) * 7 + [0, 1, 1, 2, 2, 3, 4, 4, 5, 5, 6, 6][n % 12]
 const edgeL = (n: number) => (isBlack(n) ? wpos(n) - 0.3 : wpos(n))
@@ -614,7 +637,6 @@ export default function App() {
   const [midiSupported] = useState(() => 'requestMIDIAccess' in navigator)
   const [inputs, setInputs] = useState<{ id: string; name: string }[]>([])
   const [volume, setVolume] = useState(100)
-  const [active, setActive] = useState<Set<number>>(new Set())
   const [latency, setLatency] = useState<{ handler: number; output: number } | null>(null)
   const accessRef = useRef<MIDIAccess | null>(null)
   const taps = useRef<number[]>([])
@@ -742,15 +764,13 @@ export default function App() {
 
   const press = useCallback((note: number, vel: number) => {
     rig.noteOn(note, vel)
-    setActive((s) => new Set(s).add(note))
+    activeNotes.set(new Set(activeNotes.get()).add(note))
   }, [])
   const release = useCallback((note: number) => {
     rig.noteOff(note)
-    setActive((s) => {
-      const n = new Set(s)
-      n.delete(note)
-      return n
-    })
+    const n = new Set(activeNotes.get())
+    n.delete(note)
+    activeNotes.set(n)
   }, [])
 
   // Teclado da tela: cada dedo/mouse é acompanhado; deslizar sobre as teclas toca todas (glissando).
@@ -1198,7 +1218,7 @@ export default function App() {
   const doPanic = () => {
     rig.panic()
     setPadOn(false)
-    setActive(new Set())
+    activeNotes.set(new Set())
     setSustain(false)
   }
 
@@ -1852,7 +1872,7 @@ export default function App() {
                   ◀
                 </button>
               )}
-              <span>{active.size ? [...active].sort((a, b) => a - b).map(label).join('  ') : bigKb ? `${noteName(kbFirst)} a ${noteName(kbLast)}` : 'Toque uma tecla'}</span>
+              <NoteReadout label={label} idle={bigKb ? `${noteName(kbFirst)} a ${noteName(kbLast)}` : 'Toque uma tecla'} />
               {bigKb && (
                 <button className="ghost sq oct" onClick={() => setOctBase((b) => Math.min(72, b + 12))} aria-label="Oitava acima" disabled={octBase >= 72}>
                   ▶
@@ -1883,14 +1903,7 @@ export default function App() {
                   onPointerCancel={kbUp}
                   onLostPointerCapture={kbUp}
                 >
-                  {whites.map((n) => (
-                    <div key={n} data-n={n} className={'key white' + (active.has(n) ? ' down' : '')}>
-                      {n % 12 === 0 && <span>{label(n)}</span>}
-                      {!isBlack(n + 1) || n + 1 > kbLast ? null : (
-                        <div data-n={n + 1} className={'key black' + (active.has(n + 1) ? ' down' : '')} />
-                      )}
-                    </div>
-                  ))}
+                  <KeyboardKeys whites={whites} kbLast={kbLast} label={label} />
                 </div>
               </div>
             </div>

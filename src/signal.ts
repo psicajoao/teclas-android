@@ -32,3 +32,6 @@ export const beatValue = createValue(-1) // batida atual do metrônomo (-1 = par
 export const rotorValue = createValue<null | 'slow' | 'fast'>(null)
 
 export const arpStep = createValue(-1) // passo atual do arpejador (para a tela de edição)
+
+/** Teclas apertadas agora. Fica fora do componente principal: apertar uma tecla redesenha só o teclado, não o app inteiro. */
+export const activeNotes = createValue<Set<number>>(new Set())
