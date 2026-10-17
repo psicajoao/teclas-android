@@ -13,7 +13,7 @@ export const hasSpace = (s: SpaceCfg | undefined) => !!s && (s.rev > 0 || s.dly 
 const SHIFT_SRC = `
 registerProcessor('palco-shift', class extends AudioWorkletProcessor {
   static get parameterDescriptors() { return [{ name: 'ratio', defaultValue: 2, minValue: 0.25, maxValue: 4, automationRate: 'k-rate' }] }
-  constructor() { super(); this.W = 2048; this.size = 8192; this.buf = [new Float32Array(8192), new Float32Array(8192)]; this.w = 0; this.p = 0 }
+  constructor() { super(); this.W = 4096; this.size = 16384; this.buf = [new Float32Array(16384), new Float32Array(16384)]; this.w = 0; this.p = 0 }
   process(inputs, outputs, params) {
     const inp = inputs[0], out = outputs[0]
     if (!out || !out.length) return true
@@ -110,21 +110,25 @@ export class SpaceBus {
     hp.frequency.value = 260
     const shift = new AudioWorkletNode(ctx, 'palco-shift', { numberOfInputs: 1, numberOfOutputs: 1, outputChannelCount: [2] })
     const verb = ctx.createConvolver()
-    verb.buffer = makeIR(ctx, 6.5, 2.2, 0.7)
+    verb.buffer = makeIR(ctx, 4.2, 3.4, 0.9)
     const lp = ctx.createBiquadFilter()
     lp.type = 'lowpass'
-    lp.frequency.value = 9000
+    lp.frequency.value = 5500
     const fb = ctx.createGain()
-    fb.gain.value = 0.42
+    fb.gain.value = 0.2
     const loop = ctx.createDelay(0.5)
     loop.delayTime.value = 0.03
     const direct = ctx.createGain()
     direct.gain.value = 0.55
     const wet = ctx.createGain()
     wet.gain.value = 1.0
+    // a cópia agravada é suavizada antes da reverb (tira a aspereza do efeito)
+    const soft = ctx.createBiquadFilter()
+    soft.type = 'lowpass'
+    soft.frequency.value = 4200
     this.shim.connect(hp)
     hp.connect(shift)
-    shift.connect(verb)
+    shift.connect(soft).connect(verb)
     hp.connect(direct).connect(verb)
     verb.connect(lp)
     lp.connect(wet).connect(out)
