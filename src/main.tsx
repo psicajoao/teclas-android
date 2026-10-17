@@ -83,7 +83,7 @@ if (import.meta.env.VITE_ALLOW_IPAD === '1') {
     const x = document.createElement('button')
     x.textContent = label
     x.style.cssText = 'padding:14px 22px;font:700 15px system-ui;border-radius:12px;border:2px solid #7fe;background:#102;color:#7fe;touch-action:none'
-    x.addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); fn() })
+    x.addEventListener('pointerdown', (e) => { const w = performance.now() - e.timeStamp; ;(window as unknown as { __bw?: number[] }).__bw = [...((window as unknown as { __bw?: number[] }).__bw ?? []).slice(-7), w]; e.preventDefault(); e.stopPropagation(); fn() })
     bar.appendChild(x)
   }
   mk('BIPE SIMPLES', () => {
@@ -123,6 +123,8 @@ if (import.meta.env.VITE_ALLOW_IPAD === '1') {
     const l = lag && lag.length ? ` · MIDI ${Math.round(Math.min(...lag))}–${Math.round(Math.max(...lag))} ms` : ' · MIDI: toque'
     const kb = (window as unknown as { __kb?: { wait: number; proc: number }[] }).__kb
     const k = kb && kb.length ? ` · TECLADO espera ${Math.round(Math.max(...kb.map((x) => x.wait)))} ms, envio ${Math.round(Math.max(...kb.map((x) => x.proc)))} ms` : ''
-    b.textContent = `base ${ms(c.baseLatency)} · saída ${ms(c.outputLatency)} · ${c.sampleRate} Hz · ${c.state}${l}${k}${Date.now() - clip < 4000 ? ' · ESTOUROU' : ''} · modo: ${(navigator as unknown as { audioSession?: { type: string } }).audioSession?.type ?? 'sem suporte'} (toque aqui para trocar) · toques ${taps}${err ? ' · erro: ' + err : ''}`
+    const bw = (window as unknown as { __bw?: number[] }).__bw
+    const bt = bw && bw.length ? ` · BOTÕES espera ${Math.round(Math.max(...bw))} ms` : ''
+    b.textContent = `base ${ms(c.baseLatency)} · saída ${ms(c.outputLatency)} · ${c.sampleRate} Hz · ${c.state}${l}${k}${bt}${Date.now() - clip < 4000 ? ' · ESTOUROU' : ''} · modo: ${(navigator as unknown as { audioSession?: { type: string } }).audioSession?.type ?? 'sem suporte'} (toque aqui para trocar) · toques ${taps}${err ? ' · erro: ' + err : ''}`
   }, 1000)
 }
