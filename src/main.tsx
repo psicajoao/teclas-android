@@ -142,4 +142,6 @@ if (import.meta.env.VITE_ALLOW_IPAD === '1') {
     const stall = ` · TRAVADA ${worst} ms`
     b.textContent = `base ${ms(c.baseLatency)} · saída ${ms(c.outputLatency)} · ${c.sampleRate} Hz · ${c.state}${l}${k}${bt}${stall}${Date.now() - clip < 4000 ? ' · ESTOUROU' : ''} · modo: ${(navigator as unknown as { audioSession?: { type: string } }).audioSession?.type ?? 'sem suporte'} (toque aqui para trocar) · toques ${taps}${err ? ' · erro: ' + err : ''}`
   }, 1000)
+  // Tela limpa por padrão; para medir latência, abra com ?medir no endereço.
+  if (!location.search.includes('medir')) { b.style.display = 'none'; bar.style.display = 'none' }
 }
