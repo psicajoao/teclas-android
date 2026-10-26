@@ -160,7 +160,7 @@ function TestLogin({ acc }: { acc: Access | null }) {
     else setSent(true)
   }
   const verify = async () => {
-    if (code.trim().length < 6) { setMsg('Digite o código de 6 números.'); return }
+    if (code.trim().length < 6) { setMsg('Digite o código que chegou no e-mail.'); return }
     setBusy(true); setMsg('')
     const err = await verifyCode(email, code)
     setBusy(false)
@@ -180,14 +180,14 @@ function TestLogin({ acc }: { acc: Access | null }) {
           {nonAdmin && <p>Esta sessão não é de administrador. Entre abaixo com o e-mail de administrador.</p>}
           {!sent ? (
             <>
-              <p>Digite o e-mail de administrador. Vamos enviar um código de 6 números.</p>
+              <p>Digite o e-mail de administrador. Vamos enviar um código de acesso.</p>
               <input type="email" inputMode="email" autoComplete="email" placeholder="seu@email.com" value={email} onChange={(e) => setEmail(e.target.value)} />
               <button className="wl-btn" disabled={busy} onClick={send}>{busy ? 'Enviando…' : 'Enviar código'}</button>
             </>
           ) : (
             <>
-              <p>Digite o código de 6 números que chegou em <b>{email}</b>.</p>
-              <input inputMode="numeric" autoComplete="one-time-code" placeholder="000000" value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))} />
+              <p>Digite o código que chegou em <b>{email}</b>.</p>
+              <input inputMode="numeric" autoComplete="one-time-code" placeholder="código" value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 10))} />
               <button className="wl-btn" disabled={busy} onClick={verify}>{busy ? 'Confirmando…' : 'Entrar'}</button>
               <button className="wl-link" onClick={() => { setSent(false); setCode('') }}>Usar outro e-mail</button>
             </>
