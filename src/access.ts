@@ -54,6 +54,15 @@ export const wantTrial = (on: boolean) => { try { on ? localStorage.setItem(WANT
 
 /** Confere se esta pessoa pode usar o app agora. Sem internet, vale a última liberação por alguns dias. */
 export async function checkAccess(): Promise<Access> {
+  // Se a conferência travar (rede lenta ou travamento do navegador), não deixa a tela presa em "Conferindo…".
+  const slow = new Promise<Access>(res => setTimeout(() => {
+    const c = readCache()
+    res(c && Date.now() - c.okAt < GRACE_DAYS * 864e5 && (!c.until || new Date(c.until).getTime() > Date.now()) ? { ok: true, until: c.until, admin: c.admin } : { ok: false, reason: 'no_session' })
+  }, 9000))
+  return Promise.race([checkAccessReal(), slow])
+}
+
+async function checkAccessReal(): Promise<Access> {
   if (!accessEnabled) return { ok: true, until: null, admin: false }
   const cached = readCache()
   const offlineOk = (): Access =>
