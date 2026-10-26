@@ -68,10 +68,11 @@ function Welcome({ acc, onEnter }: { acc: Access | null; onEnter: () => void }) 
               </>
             ) : !sent ? (
               <>
-                <p>{denied || 'Digite o e-mail da sua compra. Enviaremos um link para liberar este aparelho.'}</p>
+                <p>{denied || 'Digite o e-mail da sua compra. Enviaremos um código para liberar este aparelho.'}</p>
                 <input id="wl-email" type="email" inputMode="email" autoComplete="email" placeholder="seu@email.com" value={email} onChange={(e) => setEmail(e.target.value)} />
-                <button className="wl-btn" disabled={busy} onClick={() => send(false)}>{busy ? 'Enviando…' : 'Enviar link de acesso'}</button>
-                <button className="wl-btn o" disabled={busy} onClick={() => send(true)}>Testar 7 dias grátis</button>
+                <button className="wl-btn" disabled={busy} onClick={() => send(false)}>{busy ? 'Enviando…' : 'Enviar código de acesso'}</button>
+                {/* Teste grátis desligado até o lançamento: religar trocando false por true. */}
+                {false && <button className="wl-btn o" disabled={busy} onClick={() => send(true)}>Testar 7 dias grátis</button>}
               </>
             ) : (
               <>
