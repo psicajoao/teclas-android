@@ -223,12 +223,13 @@ export default function Gate() {
     return () => { document.removeEventListener('visibilitychange', back); window.removeEventListener('focus', back) }
   }, [recheck])
   useEffect(() => {
-    const w = () => setWelcome(true)
     const h = () => setAdmin(location.hash === '#admin')
-    window.addEventListener('palco:welcome', w)
     window.addEventListener('hashchange', h)
-    return () => { window.removeEventListener('palco:welcome', w); window.removeEventListener('hashchange', h) }
+    return () => { window.removeEventListener('hashchange', h) }
   }, [])
+
+  // Quem já está liberado nunca vê as boas-vindas: elas só aparecem antes do primeiro acesso.
+  useEffect(() => { if (acc && acc.ok && welcome) { markSeen(); setWelcome(false) } }, [acc, welcome])
 
   const enter = async () => { markSeen(); setWelcome(false); await recheck() }
 

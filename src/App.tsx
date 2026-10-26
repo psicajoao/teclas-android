@@ -1577,7 +1577,6 @@ export default function App() {
             {status === 'loading' ? (prog > 0 && prog < 1 ? `Baixando sons… ${Math.round(prog * 100)}%` : stage) : status === 'error' ? 'Tentar de novo' : 'Iniciar'}
           </button>
           <p className="hint">Toque em Iniciar para ligar o áudio e conectar o teclado MIDI.</p>
-          <button className="ghost" onClick={() => window.dispatchEvent(new Event('palco:welcome'))}>Ver boas-vindas</button>
           <button className="ghost" onClick={() => setMidiTest(true)}>Testar MIDI</button>
           {midiTest && <MidiTest onClose={() => setMidiTest(false)} />}
           {error && <p className="error">{error}</p>}
@@ -1838,7 +1837,7 @@ export default function App() {
                 ))}
               </div>
               <div className="quick">
-                <button className={'qbtn' + ((rotor ? rotor === 'fast' : sustain) ? ' on' : '')} onClick={toggleSustain} aria-pressed={rotor ? rotor === 'fast' : sustain} title={rotor ? 'Só órgão: o pedal troca a velocidade do rotor (lento / rápido)' : 'Pedal de sustain'}>
+                <button className={'qbtn' + ((rotor ? rotor === 'fast' : sustain) ? ' on' : '')} onPointerDown={(e) => { e.preventDefault(); toggleSustain() }} onClick={(e) => { if (e.detail === 0) toggleSustain() }} aria-pressed={rotor ? rotor === 'fast' : sustain} title={rotor ? 'Só órgão: o pedal troca a velocidade do rotor (lento / rápido)' : 'Pedal de sustain'}>
                   <svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                     <path d="M3 20h18" />
                     <path d="M6 20 9 8h6l3 12" />
