@@ -3,7 +3,7 @@ import { SYN_PRESETS } from './synth'
 import { PACK, PACK_BASE, PACK_GROUP, PACK_BUILTIN, ORIGIN_MS, ORIGIN_GU } from './pack'
 import type { SndPatch } from './chanfx'
 
-export type Timbre = { id: string; name: string; program: number; group: string; drum?: boolean; bank?: number; lsb?: number; src?: string; syn?: string; snd?: SndPatch; origin?: string }
+export type Timbre = { id: string; name: string; program: number; group: string; drum?: boolean; bank?: number; lsb?: number; src?: string; syn?: string; snd?: SndPatch; origin?: string; fam?: string }
 
 /** Muda quando o banco personalizado é registrado (para redesenhar o seletor). */
 export const customVersion = createValue(0)
@@ -44,6 +44,9 @@ const MELODIC: Timbre[] = FAMILIES.flatMap((f, fi) =>
   })),
 )
 
+/** Família de instrumento de um timbre do Worship: ele aparece na aba Worship e também na família dele. */
+const famOf = (program: number) => FAMILIES[Math.floor(program / 8)].group
+
 // Pads e leads sintetizados (não são SoundFont): ficam num grupo próprio.
 export const SYNTH_GROUP = 'Sintetizadores'
 const SYNTHS: Timbre[] = SYN_PRESETS.map((p) => ({ id: 'syn.' + p.id, name: p.name, program: 0, group: SYNTH_GROUP, syn: p.id }))
@@ -51,7 +54,7 @@ const SYNTHS: Timbre[] = SYN_PRESETS.map((p) => ({ id: 'syn.' + p.id, name: p.na
 export const TIMBRES: Timbre[] = [
   ...MELODIC,
   ...SYNTHS,
-  ...PACK_BUILTIN.map((p) => ({ id: p.id, name: p.name, program: p.program, group: PACK_GROUP, snd: p.snd, origin: ORIGIN_GU })),
+  ...PACK_BUILTIN.map((p) => ({ id: p.id, name: p.name, program: p.program, group: PACK_GROUP, fam: famOf(p.program), snd: p.snd, origin: ORIGIN_GU })),
   ...SYN_PRESETS.map((p) => ({ id: 'pk.syn-' + p.id, name: p.name, program: 0, group: PACK_GROUP, syn: p.id, origin: 'Palco Keys' })),
   ...DRUM_KITS.map(([program, name]) => ({ id: `drum${program}`, name, program, group: 'Bateria', drum: true })),
 ]
@@ -67,7 +70,7 @@ export function registerCustom(banks: { bank: { slot: number; name: string }; pa
       // O banco base é um arquivo conhecido: não depende da lista de presets, que pode chegar incompleta durante o carregamento.
       // Os pianos vão para o começo do grupo Worship.
       const at = Math.max(0, TIMBRES.findIndex((t) => t.group === PACK_GROUP))
-      TIMBRES.splice(at, 0, ...PACK.map((p) => ({ id: p.id, name: p.name, program: p.program, group: PACK_GROUP, bank: bank.slot * 8, lsb: 0, snd: p.snd, origin: ORIGIN_MS })))
+      TIMBRES.splice(at, 0, ...PACK.map((p) => ({ id: p.id, name: p.name, program: p.program, group: PACK_GROUP, fam: famOf(p.program), bank: bank.slot * 8, lsb: 0, snd: p.snd, origin: ORIGIN_MS })))
     }
     const list = [...patches].filter((p) => !p.isDrum).sort((a, b) => a.bankMSB - b.bankMSB || a.bankLSB - b.bankLSB || a.program - b.program)
     const seen = new Set<string>()

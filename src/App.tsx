@@ -16,7 +16,7 @@ import { slotsOf, fxDef, groupSummary } from './fx'
 import type { FxSlot } from './fx'
 import { audioOn } from './engine'
 import { TIMBRES, GROUPS, FAVORITES, CUSTOM_GROUP, customVersion } from './timbres'
-import { PACK_GROUP } from './pack'
+import { PACK_GROUP, ORIGIN_MS } from './pack'
 import { synTempo } from './synth'
 import { Drawer, SettingsPanel, LearnPanel } from './panels'
 import { waitingValue, lastMsgValue, setBinding, findAction, learnOpen } from './learn'
@@ -404,7 +404,9 @@ function Picker({ onPick, onClose, padMode }: { onPick: (id: string | null) => v
   }
   const isCustom = group === CUSTOM_GROUP
   const shown = useMemo(() => {
-    let list = group === 'Favoritos' ? FAVORITES.map((id) => TIMBRES.find((t) => t.id === id)!) : TIMBRES.filter((t) => t.group === group)
+    let list = group === 'Favoritos' ? FAVORITES.map((id) => TIMBRES.find((t) => t.id === id)!) : TIMBRES.filter((t) => t.group === group || t.fam === group)
+    // nas famílias, os timbres do Palco Keys (Worship) vêm primeiro
+    if (group !== 'Favoritos' && group !== PACK_GROUP) list = [...list.filter((t) => t.fam === group), ...list.filter((t) => t.fam !== group)]
     if (padMode) list = list.filter((t) => !t.drum)
     if (isCustom) {
       list = list.filter((t) => !hidden.has(t.id))
@@ -529,7 +531,7 @@ function Picker({ onPick, onClose, padMode }: { onPick: (id: string | null) => v
         <div className="cards">
           {!showFolders && shown.map((t) => (
             <button key={t.id} className={'card' + (isCustom && edit ? ' edit' : '')} disabled={busy} onClick={() => (isCustom && edit ? void removeSound(t) : onPick(t.id))}>
-              <small>{t.drum ? 'Kit' : t.syn ? 'Sint.' : t.group === CUSTOM_GROUP ? (t.src ?? '') : t.program + 1}</small>
+              <small>{t.drum ? 'Kit' : t.syn ? 'Sint.' : t.group === CUSTOM_GROUP ? (t.src ?? '') : t.origin ? (t.origin === 'Palco Keys' ? 'Palco Keys' : t.origin === ORIGIN_MS ? 'MuseScore' : 'GeneralUser') : t.program + 1}</small>
               {t.name}
             </button>
           ))}
