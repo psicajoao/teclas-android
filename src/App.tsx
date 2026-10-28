@@ -6,8 +6,7 @@ import type { Layer } from './rig'
 import { metro } from './metronome'
 import { bendValue, modValue, beatValue, rotorValue, activeNotes, useValue } from './signal'
 import { parseMidi, noteName, DRUM_NAMES } from './midi'
-import { Library } from './library'
-import { addBanks, removeBank, getHidden, setHidden, slotOf, listBanks, MAX_BANKS, bankInfo } from './bank'
+import { removeBank, getHidden, setHidden, slotOf, listBanks, bankInfo } from './bank'
 import type { Timbre } from './timbres'
 import { customStatus } from './bank'
 import { FxSheet } from './fxpanel'
@@ -391,15 +390,18 @@ function Picker({ onPick, onClose, padMode }: { onPick: (id: string | null) => v
   const hasCustom = ver > 0 && TIMBRES.some((t) => t.group === CUSTOM_GROUP)
   const hasPack = ver >= 0 && TIMBRES.some((t) => t.group === PACK_GROUP)
   const ordered = [PACK_GROUP, ...GROUPS.filter((g) => g !== PACK_GROUP)] // Worship vem primeiro, como atalho
-  const groups = [CUSTOM_GROUP, ...(padMode ? ordered.filter((g) => g !== 'Bateria') : ordered).filter((g) => g !== PACK_GROUP || hasPack)]
+  const groups = [...(hasCustom ? [CUSTOM_GROUP] : []), ...(padMode ? ordered.filter((g) => g !== 'Bateria') : ordered).filter((g) => g !== PACK_GROUP || hasPack)]
   const [group, setGroup] = useState<string>(hasCustom ? CUSTOM_GROUP : 'Favoritos')
   const [q, setQ] = useState('')
   const [bank, setBank] = useState<number | null>(null)
   const [edit, setEdit] = useState(false)
   const [hidden, setHid] = useState(getHidden)
   const [busy, setBusy] = useState(false)
-  const [up, setUp] = useState<{ d: number; t: number; name: string } | null>(null)
   const [msg, setMsg] = useState('')
+  const reload = (m: string) => {
+    setMsg(m)
+    setTimeout(() => location.reload(), 800)
+  }
   const isCustom = group === CUSTOM_GROUP
   const shown = useMemo(() => {
     let list = group === 'Favoritos' ? FAVORITES.map((id) => TIMBRES.find((t) => t.id === id)!) : TIMBRES.filter((t) => t.group === group)
@@ -412,27 +414,6 @@ function Picker({ onPick, onClose, padMode }: { onPick: (id: string | null) => v
     return list
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [group, q, padMode, ver, hidden, bank])
-  const [lib, setLib] = useState(false)
-  const reload = (m: string) => {
-    setMsg(m)
-    setTimeout(() => location.reload(), 800)
-  }
-  const add = async (files: FileList | null) => {
-    const ok = Array.from(files ?? []).filter((f) => /\.sf[23]$/i.test(f.name))
-    if (!ok.length) return setMsg('Escolha arquivos .sf2 ou .sf3.')
-    setBusy(true)
-    setUp({ d: 0, t: ok.length, name: ok[0].name })
-    try {
-      const n = await addBanks(ok, (d, t, name) => setUp({ d, t, name }))
-      setUp(null)
-      reload(`${n} SoundFont(s) guardado(s). Recarregando…`)
-    } catch (e) {
-      const q = e instanceof DOMException && e.name === 'QuotaExceededError'
-      setMsg(q ? 'Sem espaço para guardar este arquivo. Abra pelo ícone da tela de início (tem mais espaço que o Safari) ou apague SoundFonts antigos.' : 'Não consegui guardar o arquivo: ' + (e instanceof Error ? e.message : String(e)))
-      setBusy(false)
-      setUp(null)
-    }
-  }
   const removeSound = async (t: Timbre) => {
     const slot = slotOf(t.id)
     const left = TIMBRES.filter((x) => x.group === CUSTOM_GROUP && slotOf(x.id) === slot && !hidden.has(x.id)).length
@@ -479,17 +460,6 @@ function Picker({ onPick, onClose, padMode }: { onPick: (id: string | null) => v
         {isCustom && (
           <div className="pick-tools">
             <input className="pick-search" type="search" placeholder="Buscar nos meus bancos…" value={q} onChange={(e) => setQ(e.target.value)} />
-            {listBanks().length >= MAX_BANKS ? (
-              <button className="ghost addsf" onClick={() => setMsg(`A lista já está cheia (${MAX_BANKS} SoundFonts, o limite). Toque em "Limpar da lista" no aviso abaixo, ou em Editar, para liberar espaço e depois adicione de novo.`)}>
-                ＋ Adicionar
-              </button>
-            ) : (
-              <label className="ghost addsf" aria-disabled={busy}>
-                ＋ Adicionar
-                <input type="file" accept=".sf2,.sf3" multiple hidden disabled={busy} onChange={(e) => void add(e.target.files)} />
-              </label>
-            )}
-            <button className="ghost" disabled={busy} onClick={() => setLib(true)}>Biblioteca</button>
             {hasCustom && (
               <button className={'ghost' + (edit ? ' on' : '')} onClick={() => setEdit(!edit)}>
                 {edit ? 'Concluir' : 'Editar'}
@@ -497,7 +467,6 @@ function Picker({ onPick, onClose, padMode }: { onPick: (id: string | null) => v
             )}
           </div>
         )}
-        {lib && <Library onClose={() => setLib(false)} onDone={reload} />}
         {isCustom && edit && (
           <p className="pick-hint">
             Toque no som que quer tirar da lista.
@@ -507,16 +476,6 @@ function Picker({ onPick, onClose, padMode }: { onPick: (id: string | null) => v
               </button>
             )}
           </p>
-        )}
-        {up && (
-          <div className="upbox" role="status" aria-live="polite">
-            <b>
-              Guardando {Math.min(up.d + 1, up.t)} de {up.t}…
-            </b>
-            <span>{up.name}</span>
-            <progress max={up.t} value={up.d} />
-            <small>Pode demorar com arquivos grandes. Não feche esta tela.</small>
-          </div>
         )}
         {msg && <p className="pick-hint">{msg}</p>}
         {isCustom && bankInfo.failed.length > 0 && (() => {
@@ -540,7 +499,7 @@ function Picker({ onPick, onClose, padMode }: { onPick: (id: string | null) => v
                   >
                     Limpar da lista
                   </button>
-                  e depois em ＋ Adicionar para colocar os arquivos .sf2 de novo.
+                  e os sons voltam a aparecer.
                 </p>
               )}
               {bad.length > 0 && (
@@ -575,7 +534,7 @@ function Picker({ onPick, onClose, padMode }: { onPick: (id: string | null) => v
             </button>
           ))}
           {!showFolders && shown.length === 0 && (
-            <p style={{ opacity: 0.6 }}>{isCustom ? 'Nenhum som seu ainda. Toque em ＋ Adicionar e escolha arquivos .sf2.' : 'Nenhum som encontrado.'}</p>
+            <p style={{ opacity: 0.6 }}>{isCustom ? 'Nenhum som aqui ainda.' : 'Nenhum som encontrado.'}</p>
           )}
         </div>
       </div>
