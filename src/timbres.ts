@@ -72,6 +72,8 @@ export function registerCustom(banks: { bank: { slot: number; name: string }; pa
       const at = Math.max(0, TIMBRES.findIndex((t) => t.group === PACK_GROUP))
       TIMBRES.splice(at, 0, ...PACK.map((p) => ({ id: p.id, name: p.name, program: p.program, group: PACK_GROUP, fam: famOf(p.program), bank: bank.slot * 8, lsb: 0, snd: p.snd, origin: ORIGIN_MS })))
     }
+    // O banco do pacote do app é interno: só os timbres do Worship dele aparecem, sem listar o banco inteiro em "Meus bancos".
+    if (label.toLowerCase() === PACK_BASE.toLowerCase()) continue
     const list = [...patches].filter((p) => !p.isDrum).sort((a, b) => a.bankMSB - b.bankMSB || a.bankLSB - b.bankLSB || a.program - b.program)
     const seen = new Set<string>()
     for (const p of list) {
