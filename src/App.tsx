@@ -6,7 +6,7 @@ import type { Layer } from './rig'
 import { metro } from './metronome'
 import { bendValue, modValue, beatValue, rotorValue, activeNotes, useValue } from './signal'
 import { parseMidi, noteName, DRUM_NAMES } from './midi'
-import { removeBank, getHidden, setHidden, slotOf, listBanks, bankInfo } from './bank'
+import { ensurePack, removeBank, getHidden, setHidden, slotOf, listBanks, bankInfo } from './bank'
 import type { Timbre } from './timbres'
 import { customStatus } from './bank'
 import { FxSheet } from './fxpanel'
@@ -853,6 +853,7 @@ export default function App() {
     engine.onProgress = setProg
     engine.onStage = setStage
     try {
+      await ensurePack(setStage)
       await engine.start()
       rig.master = volume
       rig.split = song.split
