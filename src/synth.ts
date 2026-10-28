@@ -23,6 +23,8 @@ export type SynPreset = {
   gain: number
   /** Eco sincronizado com o andamento (colcheia pontuada): quanto volta (mix) e quantas repetições (fb). */
   delay?: { mix: number; fb: number }
+  /** Abre os osciladores no estéreo (0 a 1): metade vai para cada lado, alternando. */
+  spread?: number
 }
 
 /** Andamento atual do app (o eco dos timbres acompanha). */
@@ -117,6 +119,19 @@ export const SYN_PRESETS: SynPreset[] = [
     ],
     attack: 1.6, release: 3.2, cutoff: 1700, q: 0.4, env: 1.5, vibRate: 0.25, vibDepth: 5, reverb: 0.65, gain: 0.2,
   },
+  {
+    // Swell largo de introdução: serras em duas oitavas, abertas no estéreo, subindo devagar (medido numa gravação de referência).
+    id: 'swell-brilho', name: 'Swell Brilhante',
+    oscs: [
+      { type: 'sawtooth', detune: -14, level: 0.3 },
+      { type: 'sawtooth', detune: 0, level: 0.3 },
+      { type: 'sawtooth', detune: 14, level: 0.3 },
+      { type: 'sawtooth', detune: 1186, level: 0.46 },
+      { type: 'sawtooth', detune: 1200, level: 0.46 },
+      { type: 'sawtooth', detune: 1214, level: 0.46 },
+    ],
+    attack: 1.3, release: 2.4, cutoff: 1900, q: 0.5, env: 1.15, vibRate: 0.8, vibDepth: 12, reverb: 0.5, gain: 0.15, spread: 0.8,
+  },
 ]
 
 export const synPreset = (id: string) => SYN_PRESETS.find((p) => p.id === id) ?? null
@@ -208,7 +223,11 @@ export class SynthVoices {
       lfoGain.connect(osc.detune)
       const g = this.ctx.createGain()
       g.gain.value = o.level
-      osc.connect(g).connect(flt)
+      if (p.spread) {
+        const pan = this.ctx.createStereoPanner()
+        pan.pan.value = (oscs.length % 2 ? 1 : -1) * p.spread
+        osc.connect(g).connect(pan).connect(flt)
+      } else osc.connect(g).connect(flt)
       oscs.push(osc)
     }
     flt.connect(amp).connect(this.bus)
