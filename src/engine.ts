@@ -399,7 +399,13 @@ export class Engine {
 
 /** Modo de áudio do iOS. Na versão de teste dá para trocar tocando na etiqueta (para comparar a latência). */
 export function sessionType(): string {
-  if (import.meta.env.VITE_ALLOW_IPAD === '1') { try { return localStorage.getItem('pk.as') || 'playback' } catch { /* */ } }
+  if (import.meta.env.VITE_ALLOW_IPAD === '1') {
+    try {
+      // Só com ?medir o modo guardado vale; senão fica no normal e apaga a escolha antiga (ela podia deixar o som pausado).
+      if (location.search.includes('medir')) return localStorage.getItem('pk.as') || 'playback'
+      localStorage.removeItem('pk.as')
+    } catch { /* */ }
+  }
   return 'playback'
 }
 export const engine = new Engine()
