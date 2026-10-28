@@ -10,7 +10,7 @@ const SLIDES = [
   { img: '2.jpg', t: 'Escolha o timbre em segundos', p: 'Pianos, cordas, pads e corais organizados em pastas. Favoritos sempre à mão.' },
   { img: '3.jpg', t: 'Biblioteca de sons', p: 'Instale bancos de sons com um toque e deixe o app com a sua cara.' },
   { img: '4.jpg', t: 'Regiões do teclado', p: 'Divida o teclado e toque baixo, pad e solo ao mesmo tempo.' },
-  { img: '5.jpg', t: 'Funciona em qualquer aparelho', p: 'Computador com Windows, macOS ou Linux, e tablet Android. Instale na tela inicial e use até sem internet.' },
+  { img: '5.jpg', t: 'Feito para computador', p: 'Computador com Windows, macOS ou Linux, no Chrome ou Edge. Instale pelo navegador e use até sem internet.' },
 ]
 
 function seen(): boolean { try { return !!localStorage.getItem(SEEN) } catch { return false } }
@@ -108,10 +108,10 @@ function isIpad(): boolean {
 function unsupportedDevice(): boolean {
   const ua = navigator.userAgent
   const iphone = /iPhone|iPod/.test(ua)
-  const androidPhone = /Android/.test(ua) && /Mobile/.test(ua)
+  const android = /Android/.test(ua) // celular ou tablet
   // Versão de teste para iPad (build com VITE_ALLOW_IPAD=1): iPad só entra com a conta de administrador (ver Gate).
   if (import.meta.env.VITE_ALLOW_IPAD === '1') return false // teste: qualquer aparelho; só o administrador entra (ver Gate)
-  return iphone || androidPhone || isIpad()
+  return iphone || android || isIpad()
 }
 
 function Unsupported() {
@@ -124,7 +124,7 @@ function Unsupported() {
       <main className="wl-main">
         <div className="wl-login">
           <h2>Este aparelho não é compatível</h2>
-          <p>O Palco Keys funciona em tablet Android e em computador com Windows, macOS ou Linux. iPad em breve.</p>
+          <p>O Palco Keys é feito para computador, com Windows, macOS ou Linux, usando Chrome ou Edge. Abra este endereço no seu computador.</p>
         </div>
       </main>
     </div>
