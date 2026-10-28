@@ -3,7 +3,6 @@ import { addBanks, listBanks, MAX_BANKS } from './bank'
 
 type Item = { file: string; name: string; author: string; license: string; mb: number; desc: string }
 const ITEMS: Item[] = [
-  { file: 'TimGM6mb.sf2', name: 'TimGM6mb', author: 'Tim Brechbill / David Bolton', license: 'GPL-2', mb: 6, desc: 'Leve e rápido. Bom para celulares mais simples.' },
   { file: 'FluidR3Mono_GM.sf3', name: 'Fluid R3 Mono GM', author: 'Frank Wen / Michael Cowgill', license: 'MIT', mb: 24, desc: 'Clássico GM completo, som equilibrado.' },
   { file: 'MuseScore_General_Lite.sf3', name: 'MuseScore General Lite', author: 'S. Christian Collins', license: 'MIT / CC0', mb: 40, desc: 'GM moderno e compacto, ótimo piano e cordas.' },
   { file: 'MuseScore_General_Full.sf3', name: 'MuseScore General Full', author: 'S. Christian Collins', license: 'MIT / CC0', mb: 86, desc: 'A versão mais completa e de maior qualidade. Arquivo grande.' },
