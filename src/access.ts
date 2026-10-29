@@ -108,7 +108,7 @@ export async function signOut() {
 
 export const REASON_TEXT: Record<Reason, string> = {
   no_session: 'Entre com o seu e-mail para continuar.',
-  not_listed: 'Este e-mail ainda não tem acesso liberado. Peça a liberação ou comece o teste grátis.',
+  not_listed: 'Este e-mail ainda não tem acesso liberado. Use o e-mail da sua compra.',
   revoked: 'O acesso deste e-mail foi cancelado.',
   expired: 'O período de acesso deste e-mail terminou.',
   device_limit: 'Este e-mail já está em aparelhos demais. Peça para liberar outro aparelho.',

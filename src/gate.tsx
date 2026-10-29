@@ -4,6 +4,9 @@ import Admin from './admin'
 import { accessEnabled, checkAccess, REASON_TEXT, sb, sendLink, signOut, verifyCode, wantTrial, type Access } from './access'
 
 const SEEN = 'palco-keys.welcome'
+/** Teste grátis e botão de compra: ligados só no lançamento (variáveis do build), para não abrir o app antes da hora. */
+const TRIAL_ON = import.meta.env.VITE_TRIAL === 'on'
+const BUY_URL = (import.meta.env.VITE_BUY_URL as string | undefined) || ''
 const base = import.meta.env.BASE_URL
 const SLIDES = [
   { img: '1.jpg', t: 'Toque ao vivo, sem complicação', p: 'Camadas, divisões de teclado e timbres prontos para o palco. Tudo na tela, do jeito que você toca.' },
@@ -22,6 +25,7 @@ function Welcome({ acc, onEnter }: { acc: Access | null; onEnter: () => void }) 
   const [i, setI] = useState(acc && !acc.ok ? last : 0)
   const [email, setEmail] = useState('')
   const [sent, setSent] = useState(false)
+  const [code, setCode] = useState('')
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState('')
   const go = (n: number) => setI((x) => Math.max(0, Math.min(last, x + n)))
@@ -40,6 +44,15 @@ function Welcome({ acc, onEnter }: { acc: Access | null; onEnter: () => void }) 
     setBusy(false)
     if (err) setMsg('Não consegui enviar: ' + err)
     else setSent(true)
+  }
+
+  const confirm = async () => {
+    if (code.trim().length < 6) { setMsg('Digite o código que chegou no e-mail.'); return }
+    setBusy(true); setMsg('')
+    const err = await verifyCode(email, code)
+    setBusy(false)
+    if (err) setMsg('Código não confere. Peça um novo e tente de novo.')
+    else onEnter()
   }
 
   const denied = acc && !acc.ok && acc.reason !== 'no_session' ? REASON_TEXT[acc.reason] : ''
@@ -71,14 +84,15 @@ function Welcome({ acc, onEnter }: { acc: Access | null; onEnter: () => void }) 
                 <p>{denied || 'Digite o e-mail da sua compra. Enviaremos um código para liberar este aparelho.'}</p>
                 <input id="wl-email" type="email" inputMode="email" autoComplete="email" placeholder="seu@email.com" value={email} onChange={(e) => setEmail(e.target.value)} />
                 <button className="wl-btn" disabled={busy} onClick={() => send(false)}>{busy ? 'Enviando…' : 'Enviar código de acesso'}</button>
-                {/* Teste grátis desligado até o lançamento: religar trocando false por true. */}
-                {false && <button className="wl-btn o" disabled={busy} onClick={() => send(true)}>Testar 7 dias grátis</button>}
+                {TRIAL_ON && <button className="wl-btn o" disabled={busy} onClick={() => send(true)}>Criar conta e testar 7 dias grátis</button>}
+                {BUY_URL && <a className="wl-btn o" href={BUY_URL} target="_blank" rel="noreferrer">Comprar licença (R$ 199)</a>}
               </>
             ) : (
               <>
-                <p>Enviamos um link para <b>{email}</b>. Abra o e-mail neste mesmo aparelho e toque no link para liberar.</p>
-                <button className="wl-btn" onClick={onEnter}>Já liberei pelo e-mail</button>
-                <button className="wl-link" onClick={() => { setSent(false);  }}>Usar outro e-mail</button>
+                <p>Enviamos um código para <b>{email}</b>. Digite aqui embaixo.</p>
+                <input inputMode="numeric" autoComplete="one-time-code" placeholder="código" value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 10))} />
+                <button className="wl-btn" disabled={busy} onClick={confirm}>{busy ? 'Conferindo…' : 'Entrar'}</button>
+                <button className="wl-link" onClick={() => { setSent(false); setCode(''); setMsg('') }}>Usar outro e-mail</button>
               </>
             )}
             {msg && <p className="wl-err">{msg}</p>}
