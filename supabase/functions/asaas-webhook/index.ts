@@ -2,14 +2,13 @@
 // Segredos necessários (Supabase > Edge Functions > Secrets):
 //   ASAAS_API_KEY        chave de API do Asaas (sandbox no começo)
 //   ASAAS_WEBHOOK_TOKEN  texto longo que você inventa; o mesmo vai no webhook do Asaas
-//   ASAAS_BASE           https://sandbox.asaas.com/api/v3  (teste)  ou  https://api.asaas.com/v3  (real)
+//   ASAAS_BASE           (opcional) https://api-sandbox.asaas.com/v3 (teste) ou https://api.asaas.com/v3 (real); sem ele, vale o prefixo da chave
 //   PAYMENT_LINK_ID      (opcional) id do link de R$199; só pagamentos desse link liberam a licença
 // SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY já existem sozinhos dentro da função.
 import { createClient } from 'npm:@supabase/supabase-js@2'
 
 const GRANT = new Set(['PAYMENT_CONFIRMED', 'PAYMENT_RECEIVED'])
 const REVOKE = new Set(['PAYMENT_REFUNDED', 'PAYMENT_CHARGEBACK_REQUESTED', 'PAYMENT_CHARGEBACK_DISPUTE', 'PAYMENT_DELETED'])
-const MIN_VALUE = 199
 
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } })
@@ -28,12 +27,13 @@ Deno.serve(async (req) => {
 
   const link = Deno.env.get('PAYMENT_LINK_ID')
   if (link && pay.paymentLink !== link) return json({ ok: true, ignored: 'outro produto' })
-  if (GRANT.has(ev) && (pay.value ?? 0) < MIN_VALUE) return json({ ok: true, ignored: 'valor abaixo do preço' })
+  // sem checar valor: o link pode ser parcelado (parcelas menores que o preço)
 
   // o aviso traz só o código do cliente; o e-mail vem de uma consulta ao Asaas
-  const base = Deno.env.get('ASAAS_BASE') ?? 'https://api.asaas.com/v3'
-  const r = await fetch(`${base}/customers/${pay.customer}`, { headers: { access_token: Deno.env.get('ASAAS_API_KEY') ?? '' } })
-  if (!r.ok) return json({ error: 'não consegui consultar o cliente' }, 502) // o Asaas tenta de novo
+  const key = (Deno.env.get('ASAAS_API_KEY') ?? '').trim()
+  const base = Deno.env.get('ASAAS_BASE')?.trim() || (key.startsWith('$aact_hmlg_') ? 'https://api-sandbox.asaas.com/v3' : 'https://api.asaas.com/v3')
+  const r = await fetch(`${base}/customers/${pay.customer}`, { headers: { access_token: key, 'User-Agent': 'PalcoKeys' } })
+  if (!r.ok) { const t = await r.text(); console.log('asaas', r.status, t); return json({ error: 'asaas ' + r.status, detail: t }, 502) } // o Asaas tenta de novo
   const email = String((await r.json()).email ?? '').trim().toLowerCase()
   if (!email) return json({ error: 'cliente sem e-mail' }, 422)
 
