@@ -1348,3 +1348,6 @@ h1 span { color: var(--cyan); text-shadow: 0 0 16px #00e5ff77; }
     margin: 0;
   }
 }
+
+.trial-badge { position: fixed; right: 12px; bottom: 12px; z-index: 50; display: flex; align-items: center; gap: 10px; padding: 7px 12px; border-radius: 999px; background: var(--panel); border: 1px solid var(--line); color: var(--ink); font-size: 13px; box-shadow: 0 4px 16px rgba(0,0,0,.35); }
+.trial-badge a { color: var(--violet); font-weight: 600; text-decoration: none; }

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import App from './App'
 import Admin from './admin'
-import { accessEnabled, checkAccess, REASON_TEXT, sb, sendLink, signOut, verifyCode, wantTrial, type Access } from './access'
+import { accessEnabled, checkAccess, confirmSignUp, daysLeft, REASON_TEXT, resetPassword, sb, sendLink, setNewPassword, signInPassword, signOut, signUp, verifyCode, wantTrial, type Access } from './access'
 
 const SEEN = 'palco-keys.welcome'
 /** Teste grátis e botão de compra: ligados só no lançamento (variáveis do build), para não abrir o app antes da hora. */
@@ -24,35 +24,63 @@ function Welcome({ acc, onEnter }: { acc: Access | null; onEnter: () => void }) 
   /** Quem ainda não tem acesso vai direto para a tela de e-mail (sem passar pelos slides). */
   const [i, setI] = useState(acc && !acc.ok ? last : 0)
   const [email, setEmail] = useState('')
-  const [sent, setSent] = useState(false)
+  const [pass, setPass] = useState('')
+  const [pass2, setPass2] = useState('')
+  /** entrar | criar | confirmar (código do e-mail) | esqueci (envia o link de nova senha) */
+  const [mode, setMode] = useState<'entrar' | 'criar' | 'confirmar' | 'esqueci'>(TRIAL_ON ? 'criar' : 'entrar')
   const [code, setCode] = useState('')
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState('')
   const go = (n: number) => setI((x) => Math.max(0, Math.min(last, x + n)))
 
   useEffect(() => {
-    const k = (e: KeyboardEvent) => { if (e.key === 'ArrowRight') go(1); else if (e.key === 'ArrowLeft') go(-1) }
+    const k = (e: KeyboardEvent) => {
+      if ((e.target as HTMLElement)?.tagName === 'INPUT') return
+      if (e.key === 'ArrowRight') go(1); else if (e.key === 'ArrowLeft') go(-1)
+    }
     window.addEventListener('keydown', k)
     return () => window.removeEventListener('keydown', k)
   }, [])
 
-  const send = async (trial: boolean) => {
-    if (!/^\S+@\S+\.\S+$/.test(email)) { setMsg('Digite um e-mail válido.'); return }
+  const validEmail = () => /^\S+@\S+\.\S+$/.test(email)
+  const swap = (m: typeof mode) => { setMode(m); setMsg(''); setPass(''); setPass2('') }
+
+  const create = async () => {
+    if (!validEmail()) { setMsg('Digite um e-mail válido.'); return }
+    if (pass.length < 8) { setMsg('A senha precisa ter pelo menos 8 caracteres.'); return }
+    if (pass !== pass2) { setMsg('As duas senhas não são iguais.'); return }
     setBusy(true); setMsg('')
-    wantTrial(trial)
-    const err = await sendLink(email)
+    const r = await signUp(email, pass)
     setBusy(false)
-    if (err) setMsg('Não consegui enviar: ' + err)
-    else setSent(true)
+    if (r.err) setMsg(/already|registered/i.test(r.err) ? 'Este e-mail já tem conta. Toque em "Já tenho conta".' : 'Não consegui criar a conta: ' + r.err)
+    else if (r.confirm) setMode('confirmar')
+    else onEnter()
+  }
+
+  const login = async () => {
+    if (!validEmail() || !pass) { setMsg('Digite o e-mail e a senha.'); return }
+    setBusy(true); setMsg('')
+    const err = await signInPassword(email, pass)
+    setBusy(false)
+    if (err) setMsg(/confirm/i.test(err) ? 'Falta confirmar o e-mail. Abra o e-mail que enviamos e toque no botão de confirmar.' : 'E-mail ou senha incorretos.')
+    else onEnter()
   }
 
   const confirm = async () => {
     if (code.trim().length < 6) { setMsg('Digite o código que chegou no e-mail.'); return }
     setBusy(true); setMsg('')
-    const err = await verifyCode(email, code)
+    const err = await confirmSignUp(email, code)
     setBusy(false)
-    if (err) setMsg('Código não confere. Peça um novo e tente de novo.')
+    if (err) setMsg('Código não confere. Confira o e-mail ou crie a conta de novo.')
     else onEnter()
+  }
+
+  const forgot = async () => {
+    if (!validEmail()) { setMsg('Digite o seu e-mail.'); return }
+    setBusy(true); setMsg('')
+    const err = await resetPassword(email)
+    setBusy(false)
+    setMsg(err ? 'Não consegui enviar: ' + err : 'Enviamos um e-mail com o link para criar uma nova senha.')
   }
 
   const denied = acc && !acc.ok && acc.reason !== 'no_session' ? REASON_TEXT[acc.reason] : ''
@@ -73,26 +101,45 @@ function Welcome({ acc, onEnter }: { acc: Access | null; onEnter: () => void }) 
         ) : (
           <div className="wl-login">
             <img className="wl-logo" src={base + 'icon-512.png'} alt="" width={84} height={84} />
-            <h2>{accessEnabled ? 'Pronto para começar?' : 'Tudo pronto!'}</h2>
+            <h2>{!accessEnabled ? 'Tudo pronto!' : mode === 'criar' ? 'Criar conta' : mode === 'entrar' ? 'Entrar' : 'Palco Keys'}</h2>
             {!accessEnabled ? (
               <>
                 <p>Toque em começar para abrir o Palco Keys.</p>
                 <button className="wl-btn" onClick={onEnter}>Começar</button>
               </>
-            ) : !sent ? (
+            ) : mode === 'confirmar' ? (
               <>
-                <p>{denied || 'Digite o e-mail da sua compra. Enviaremos um código para liberar este aparelho.'}</p>
-                <input id="wl-email" type="email" inputMode="email" autoComplete="email" placeholder="seu@email.com" value={email} onChange={(e) => setEmail(e.target.value)} />
-                <button className="wl-btn" disabled={busy} onClick={() => send(false)}>{busy ? 'Enviando…' : 'Enviar código de acesso'}</button>
-                {TRIAL_ON && <button className="wl-btn o" disabled={busy} onClick={() => send(true)}>Criar conta e testar 7 dias grátis</button>}
+                <p>Enviamos um e-mail para <b>{email}</b>. Toque no botão de confirmar, ou digite aqui o código de 6 números.</p>
+                <input inputMode="numeric" autoComplete="one-time-code" placeholder="código" value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 10))} />
+                <button className="wl-btn" disabled={busy} onClick={confirm}>{busy ? 'Conferindo…' : 'Confirmar e entrar'}</button>
+                <button className="wl-link" onClick={() => swap('criar')}>Usar outro e-mail</button>
+              </>
+            ) : mode === 'esqueci' ? (
+              <>
+                <p>Digite o e-mail da sua conta. Enviaremos um link para criar uma nova senha.</p>
+                <input type="email" inputMode="email" autoComplete="email" placeholder="seu@email.com" value={email} onChange={(e) => setEmail(e.target.value)} />
+                <button className="wl-btn" disabled={busy} onClick={forgot}>{busy ? 'Enviando…' : 'Enviar link'}</button>
+                <button className="wl-link" onClick={() => swap('entrar')}>Voltar</button>
+              </>
+            ) : mode === 'criar' ? (
+              <>
+                <p>{TRIAL_ON ? 'Crie a sua conta para começar o teste grátis de 7 dias. Quem já comprou cria a conta com o e-mail da compra.' : 'Crie a sua conta com o e-mail da compra.'}</p>
+                <input type="email" inputMode="email" autoComplete="email" placeholder="seu@email.com" value={email} onChange={(e) => setEmail(e.target.value)} />
+                <input type="password" autoComplete="new-password" placeholder="senha (mínimo 8 caracteres)" value={pass} onChange={(e) => setPass(e.target.value)} />
+                <input type="password" autoComplete="new-password" placeholder="repita a senha" value={pass2} onChange={(e) => setPass2(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') create() }} />
+                <button className="wl-btn" disabled={busy} onClick={create}>{busy ? 'Criando…' : TRIAL_ON ? 'Criar conta e testar 7 dias grátis' : 'Criar conta'}</button>
+                <button className="wl-link" onClick={() => swap('entrar')}>Já tenho conta</button>
                 {BUY_URL && <a className="wl-btn o" href={BUY_URL} target="_blank" rel="noreferrer">Comprar licença (R$ 199)</a>}
               </>
             ) : (
               <>
-                <p>Enviamos um código para <b>{email}</b>. Digite aqui embaixo.</p>
-                <input inputMode="numeric" autoComplete="one-time-code" placeholder="código" value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 10))} />
-                <button className="wl-btn" disabled={busy} onClick={confirm}>{busy ? 'Conferindo…' : 'Entrar'}</button>
-                <button className="wl-link" onClick={() => { setSent(false); setCode(''); setMsg('') }}>Usar outro e-mail</button>
+                <p>{denied || 'Entre com o e-mail e a senha da sua conta.'}</p>
+                <input id="wl-email" type="email" inputMode="email" autoComplete="email" placeholder="seu@email.com" value={email} onChange={(e) => setEmail(e.target.value)} />
+                <input type="password" autoComplete="current-password" placeholder="senha" value={pass} onChange={(e) => setPass(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') login() }} />
+                <button className="wl-btn" disabled={busy} onClick={login}>{busy ? 'Entrando…' : 'Entrar'}</button>
+                <button className="wl-link" onClick={() => swap('esqueci')}>Esqueci a senha</button>
+                <button className="wl-link" onClick={() => swap('criar')}>Criar conta</button>
+                {BUY_URL && <a className="wl-btn o" href={BUY_URL} target="_blank" rel="noreferrer">Comprar licença (R$ 199)</a>}
               </>
             )}
             {msg && <p className="wl-err">{msg}</p>}
@@ -215,17 +262,97 @@ function TestLogin({ acc }: { acc: Access | null }) {
   )
 }
 
+
+/** Conta sem acesso (teste terminou, sem licença, cancelado): explica e leva à compra. */
+function Ended({ acc, onOut }: { acc: Extract<Access, { ok: false }>; onOut: () => void }) {
+  const expiredTrial = acc.reason === 'expired' && !!acc.trial
+  const title = expiredTrial ? 'Seu teste grátis terminou' : acc.reason === 'expired' ? 'Seu acesso terminou' : 'Sua conta ainda não tem licença'
+  const text = expiredTrial
+    ? 'Os 7 dias de teste acabaram. Para continuar usando o Palco Keys, é preciso comprar a licença. Depois da compra, é só entrar de novo com este mesmo e-mail.'
+    : acc.reason === 'not_listed'
+      ? 'Sua conta está criada, mas este e-mail ainda não tem licença. Compre a licença com este mesmo e-mail para liberar o app.'
+      : REASON_TEXT[acc.reason]
+  return (
+    <div className="wl">
+      <header className="wl-top">
+        <img src={base + 'icon-192.png'} alt="" width={36} height={36} />
+        <span className="wl-brand">Palco <span>Keys</span></span>
+      </header>
+      <main className="wl-main">
+        <div className="wl-login">
+          <img className="wl-logo" src={base + 'icon-512.png'} alt="" width={84} height={84} />
+          <h2>{title}</h2>
+          <p>{text}</p>
+          {BUY_URL && <a className="wl-btn" href={BUY_URL} target="_blank" rel="noreferrer">Comprar licença (R$ 199)</a>}
+          <button className="wl-link" onClick={onOut}>Sair desta conta</button>
+        </div>
+      </main>
+    </div>
+  )
+}
+
+/** Contagem regressiva do teste, sempre visível dentro do app. */
+function TrialBadge({ until }: { until: string }) {
+  const [, tick] = useState(0)
+  useEffect(() => { const t = setInterval(() => tick((x) => x + 1), 60000); return () => clearInterval(t) }, [])
+  const d = daysLeft(until)
+  if (d === null) return null
+  const txt = d === 0 ? 'Último dia de teste' : d === 1 ? 'Falta 1 dia de teste' : `Faltam ${d} dias de teste`
+  return (
+    <div className="trial-badge" role="status">
+      <span>{txt}</span>
+      {BUY_URL && <a href={BUY_URL} target="_blank" rel="noreferrer">Comprar</a>}
+    </div>
+  )
+}
+
+/** Quem pediu "esqueci a senha" volta pelo link do e-mail e cria a nova senha aqui. */
+function NewPassword({ onDone }: { onDone: () => void }) {
+  const [a, setA] = useState('')
+  const [b, setB] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [msg, setMsg] = useState('')
+  const save = async () => {
+    if (a.length < 8) { setMsg('A senha precisa ter pelo menos 8 caracteres.'); return }
+    if (a !== b) { setMsg('As duas senhas não são iguais.'); return }
+    setBusy(true); setMsg('')
+    const err = await setNewPassword(a)
+    setBusy(false)
+    if (err) setMsg('Não consegui salvar: ' + err)
+    else onDone()
+  }
+  return (
+    <div className="wl">
+      <header className="wl-top">
+        <img src={base + 'icon-192.png'} alt="" width={36} height={36} />
+        <span className="wl-brand">Palco <span>Keys</span></span>
+      </header>
+      <main className="wl-main">
+        <div className="wl-login">
+          <h2>Nova senha</h2>
+          <p>Escolha a nova senha da sua conta.</p>
+          <input type="password" autoComplete="new-password" placeholder="nova senha (mínimo 8 caracteres)" value={a} onChange={(e) => setA(e.target.value)} />
+          <input type="password" autoComplete="new-password" placeholder="repita a senha" value={b} onChange={(e) => setB(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') save() }} />
+          <button className="wl-btn" disabled={busy} onClick={save}>{busy ? 'Salvando…' : 'Salvar senha'}</button>
+          {msg && <p className="wl-err">{msg}</p>}
+        </div>
+      </main>
+    </div>
+  )
+}
+
 /** Porteiro do app: boas-vindas na primeira vez, confere o acesso e abre o app. */
 export default function Gate() {
   const [acc, setAcc] = useState<Access | null>(null)
   const [welcome, setWelcome] = useState(!seen())
   const [admin, setAdmin] = useState(location.hash === '#admin')
+  const [recovery, setRecovery] = useState(false)
 
   const recheck = useCallback(async () => { setAcc(await checkAccess()) }, [])
   useEffect(() => { recheck() }, [recheck])
   useEffect(() => {
     if (!accessEnabled) return
-    const { data } = sb().auth.onAuthStateChange((ev) => { if (ev === 'SIGNED_IN' || ev === 'SIGNED_OUT') recheck() })
+    const { data } = sb().auth.onAuthStateChange((ev) => { if (ev === 'PASSWORD_RECOVERY') setRecovery(true); else if (ev === 'SIGNED_IN' || ev === 'SIGNED_OUT') recheck() })
     return () => data.subscription.unsubscribe()
   }, [recheck])
   /** Ao voltar para a aba (ex.: depois de tocar no link do e-mail), confere o acesso de novo sozinho. */
@@ -253,7 +380,15 @@ export default function Gate() {
 
   if (accessEnabled && !acc) return <div className="wl"><div className="wl-wait">Conferindo seu acesso…</div></div>
   if (admin && acc && acc.ok && acc.admin) return <Admin onClose={() => { location.hash = ''; setAdmin(false) }} />
+  if (recovery) return <NewPassword onDone={() => { setRecovery(false); recheck() }} />
   const blocked = accessEnabled && acc && !acc.ok
+  const ended = blocked && acc && !acc.ok && ['expired', 'not_listed', 'trial_used', 'revoked'].includes(acc.reason)
+  if (ended && acc && !acc.ok) return <Ended acc={acc} onOut={async () => { await signOut(); await enter() }} />
   if (welcome || blocked) return <Welcome acc={acc} onEnter={enter} />
-  return <App />
+  return (
+    <>
+      <App />
+      {accessEnabled && acc && acc.ok && acc.trial && acc.until && <TrialBadge until={acc.until} />}
+    </>
+  )
 }

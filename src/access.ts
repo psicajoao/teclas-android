@@ -22,7 +22,7 @@ const CACHE_KEY = 'palco-keys.access'
 const DEV_KEY = 'palco-keys.device'
 
 export type Reason = 'no_session' | 'not_listed' | 'revoked' | 'expired' | 'device_limit' | 'trial_used' | 'offline' | 'error'
-export type Access = { ok: true; until: string | null; admin: boolean } | { ok: false; reason: Reason }
+export type Access = { ok: true; until: string | null; admin: boolean; trial?: boolean } | { ok: false; reason: Reason; trial?: boolean }
 
 let client: SupabaseClient | null = null
 export function sb(): SupabaseClient {
@@ -45,7 +45,7 @@ function deviceName(): string {
   return `${os} ${br}`.trim()
 }
 
-type Cache = { email: string; okAt: number; until: string | null; admin: boolean }
+type Cache = { email: string; okAt: number; until: string | null; admin: boolean; trial?: boolean }
 const readCache = (): Cache | null => { try { return JSON.parse(localStorage.getItem(CACHE_KEY) || 'null') } catch { return null } }
 const writeCache = (c: Cache | null) => { try { c ? localStorage.setItem(CACHE_KEY, JSON.stringify(c)) : localStorage.removeItem(CACHE_KEY) } catch { /* sem armazenamento */ } }
 
@@ -57,7 +57,7 @@ export async function checkAccess(): Promise<Access> {
   // Se a conferência travar (rede lenta ou travamento do navegador), não deixa a tela presa em "Conferindo…".
   const slow = new Promise<Access>(res => setTimeout(() => {
     const c = readCache()
-    res(c && Date.now() - c.okAt < GRACE_DAYS * 864e5 && (!c.until || new Date(c.until).getTime() > Date.now()) ? { ok: true, until: c.until, admin: c.admin } : { ok: false, reason: 'no_session' })
+    res(c && Date.now() - c.okAt < GRACE_DAYS * 864e5 && (!c.until || new Date(c.until).getTime() > Date.now()) ? { ok: true, until: c.until, admin: c.admin, trial: c.trial } : { ok: false, reason: 'no_session' })
   }, 9000))
   return Promise.race([checkAccessReal(), slow])
 }
@@ -67,23 +67,24 @@ async function checkAccessReal(): Promise<Access> {
   const cached = readCache()
   const offlineOk = (): Access =>
     cached && Date.now() - cached.okAt < GRACE_DAYS * 864e5 && (!cached.until || new Date(cached.until).getTime() > Date.now())
-      ? { ok: true, until: cached.until, admin: cached.admin }
+      ? { ok: true, until: cached.until, admin: cached.admin, trial: cached.trial }
       : { ok: false, reason: 'offline' }
   try {
     const { data: s } = await sb().auth.getSession()
     if (!s.session) return cached && !navigator.onLine ? offlineOk() : { ok: false, reason: 'no_session' }
-    let trial = false
-    try { trial = !!localStorage.getItem(WANT_TRIAL) } catch { /* ok */ }
+    // Conta criada = teste de 7 dias (quando o teste está ligado no lançamento).
+    let trial = import.meta.env.VITE_TRIAL === 'on'
+    try { if (localStorage.getItem(WANT_TRIAL)) trial = true } catch { /* ok */ }
     const { data, error } = await sb().rpc('pk_check_access', { p_device: deviceId(), p_name: deviceName(), p_trial: trial })
     if (error) return offlineOk()
-    const r = data as { ok: boolean; reason?: Reason; until?: string | null; admin?: boolean }
+    const r = data as { ok: boolean; reason?: Reason; until?: string | null; admin?: boolean; trial?: boolean }
     if (r.ok) {
       wantTrial(false)
-      writeCache({ email: s.session.user.email ?? '', okAt: Date.now(), until: r.until ?? null, admin: !!r.admin })
-      return { ok: true, until: r.until ?? null, admin: !!r.admin }
+      writeCache({ email: s.session.user.email ?? '', okAt: Date.now(), until: r.until ?? null, admin: !!r.admin, trial: !!r.trial })
+      return { ok: true, until: r.until ?? null, admin: !!r.admin, trial: !!r.trial }
     }
     writeCache(null)
-    return { ok: false, reason: r.reason ?? 'error' }
+    return { ok: false, reason: r.reason ?? 'error', trial: !!r.trial }
   } catch {
     return offlineOk()
   }
@@ -99,6 +100,42 @@ export async function sendLink(email: string): Promise<string | null> {
 export async function verifyCode(email: string, token: string): Promise<string | null> {
   const { error } = await sb().auth.verifyOtp({ email: email.trim().toLowerCase(), token: token.trim(), type: 'email' })
   return error ? error.message : null
+}
+
+const redirect = () => location.origin + location.pathname + (GATE_MODE === 'test' ? '?acesso=1' : '')
+
+/** Cria a conta com e-mail e senha. Devolve 'confirm' quando falta confirmar o e-mail. */
+export async function signUp(email: string, password: string): Promise<{ err?: string; confirm?: boolean }> {
+  const { data, error } = await sb().auth.signUp({ email: email.trim().toLowerCase(), password, options: { emailRedirectTo: redirect() } })
+  if (error) return { err: error.message }
+  return data.session ? {} : { confirm: true }
+}
+
+/** Confirma o e-mail da conta nova com o código de 6 números (alternativa ao botão do e-mail). */
+export async function confirmSignUp(email: string, token: string): Promise<string | null> {
+  const { error } = await sb().auth.verifyOtp({ email: email.trim().toLowerCase(), token: token.trim(), type: 'signup' })
+  return error ? error.message : null
+}
+
+export async function signInPassword(email: string, password: string): Promise<string | null> {
+  const { error } = await sb().auth.signInWithPassword({ email: email.trim().toLowerCase(), password })
+  return error ? error.message : null
+}
+
+export async function resetPassword(email: string): Promise<string | null> {
+  const { error } = await sb().auth.resetPasswordForEmail(email.trim().toLowerCase(), { redirectTo: redirect() })
+  return error ? error.message : null
+}
+
+export async function setNewPassword(password: string): Promise<string | null> {
+  const { error } = await sb().auth.updateUser({ password })
+  return error ? error.message : null
+}
+
+/** Dias que faltam (arredondando para cima): 0 = termina hoje. */
+export function daysLeft(until: string | null | undefined): number | null {
+  if (!until) return null
+  return Math.max(0, Math.ceil((new Date(until).getTime() - Date.now()) / 864e5))
 }
 
 export async function signOut() {
