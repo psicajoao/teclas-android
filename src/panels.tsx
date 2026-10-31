@@ -101,7 +101,7 @@ function Backup() {
 }
 
 /* ---------------------------------------------------------------- gaveta (☰) */
-export function Drawer({ onClose, onLearn, onSettings }: { onClose: () => void; onLearn: () => void; onSettings: () => void }) {
+export function Drawer({ onClose, onLearn, onSettings, onManual }: { onClose: () => void; onLearn: () => void; onSettings: () => void; onManual: () => void }) {
   useEffect(() => {
     const k = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
     window.addEventListener('keydown', k)
@@ -129,6 +129,15 @@ export function Drawer({ onClose, onLearn, onSettings }: { onClose: () => void; 
           </svg>
           <span>
             Configurações<small>Áudio e MIDI</small>
+          </span>
+        </button>
+        <button className="drawer-item" onClick={onManual}>
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2z" />
+            <path d="M4 19V5M9 8h6M9 12h6" />
+          </svg>
+          <span>
+            Manual<small>Como usar o Palco Keys</small>
           </span>
         </button>
       </nav>

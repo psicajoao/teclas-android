@@ -19,6 +19,7 @@ import { TIMBRES, GROUPS, FAVORITES, CUSTOM_GROUP, customVersion } from './timbr
 import { PACK_GROUP, ORIGIN_MS } from './pack'
 import { synTempo } from './synth'
 import { Drawer, SettingsPanel, LearnPanel } from './panels'
+import { Manual } from './manual'
 import { waitingValue, lastMsgValue, setBinding, findAction, learnOpen } from './learn'
 import { roleOf, connectedIds } from './midiconf'
 import MidiTest from './miditest'
@@ -901,6 +902,7 @@ export default function App() {
   const [menuOpen, setMenuOpen] = useState(false)
   const [learnShown, setLearnShown] = useState(false)
   const [settingsShown, setSettingsShown] = useState(false)
+  const [manualShown, setManualShown] = useState(false)
   const [zonesOpen, setZonesOpen] = useState(false)
   const [bigKb, setBigKb] = useState(false)
   const [octBase, setOctBase] = useState(48)
@@ -1892,8 +1894,13 @@ export default function App() {
             setMenuOpen(false)
             setSettingsShown(true)
           }}
+          onManual={() => {
+            setMenuOpen(false)
+            setManualShown(true)
+          }}
         />
       )}
+      {manualShown && <Manual onClose={() => setManualShown(false)} />}
       {learnShown && <LearnPanel onClose={() => setLearnShown(false)} hasMidi={inputs.length > 0} />}
       {settingsShown && (
         <SettingsPanel
