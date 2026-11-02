@@ -1308,7 +1308,7 @@ h1 span { color: var(--cyan); text-shadow: 0 0 16px #00e5ff77; }
 .wl-logo { align-self: center; border-radius: 20px; box-shadow: 0 14px 40px -10px #b026ff88, 0 0 0 1px #ffffff14; }
 .wl input { width: 100%; padding: 13px; border-radius: 12px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); font: inherit; font-size: 16px; }
 .wl input:focus, .wl button:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
-.wl-btn { padding: 13px; border-radius: 12px; border: 0; background: linear-gradient(90deg, var(--cyan), var(--violet)); color: #050308; font: inherit; font-size: 16px; font-weight: 700; cursor: pointer; }
+.wl-btn { padding: 13px; border-radius: 12px; border: 0; background: linear-gradient(90deg, var(--cyan), var(--violet)); color: #050308; font: inherit; font-size: 16px; font-weight: 700; cursor: pointer; text-decoration: none; text-align: center; display: block; }
 .wl-btn.o { background: transparent; color: var(--ink); border: 1px solid var(--violet); }
 .wl-btn:disabled { opacity: .5; }
 .wl-link { background: none; border: 0; color: var(--muted); text-decoration: underline; font: inherit; cursor: pointer; padding: 6px; }
