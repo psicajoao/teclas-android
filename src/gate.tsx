@@ -27,7 +27,7 @@ function Welcome({ acc, onEnter }: { acc: Access | null; onEnter: () => void }) 
   const [pass, setPass] = useState('')
   const [pass2, setPass2] = useState('')
   /** entrar | criar | confirmar (código do e-mail) | esqueci (envia o link de nova senha) */
-  const [mode, setMode] = useState<'entrar' | 'criar' | 'confirmar' | 'esqueci'>(TRIAL_ON ? 'criar' : 'entrar')
+  const [mode, setMode] = useState<'entrar' | 'criar' | 'confirmar' | 'esqueci'>(TRIAL_ON || /[?&]criar\b/.test(location.search) ? 'criar' : 'entrar')
   const [code, setCode] = useState('')
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState('')
