@@ -22,7 +22,7 @@ const CACHE_KEY = 'palco-keys.access'
 const DEV_KEY = 'palco-keys.device'
 
 export type Reason = 'no_session' | 'not_listed' | 'revoked' | 'expired' | 'device_limit' | 'trial_used' | 'offline' | 'error'
-export type Access = { ok: true; until: string | null; admin: boolean; trial?: boolean } | { ok: false; reason: Reason; trial?: boolean }
+export type Access = { ok: true; until: string | null; admin: boolean; trial?: boolean } | { ok: false; reason: Reason; trial?: boolean; detail?: string }
 
 let client: SupabaseClient | null = null
 export function sb(): SupabaseClient {
@@ -76,7 +76,7 @@ async function checkAccessReal(): Promise<Access> {
     let trial = import.meta.env.VITE_TRIAL === 'on'
     try { if (localStorage.getItem(WANT_TRIAL)) trial = true } catch { /* ok */ }
     const { data, error } = await sb().rpc('pk_check_access', { p_device: deviceId(), p_name: deviceName(), p_trial: trial })
-    if (error) return offlineOk()
+    if (error) { const o = offlineOk(); return o.ok ? o : { ok: false, reason: 'error', detail: error.message } }
     const r = data as { ok: boolean; reason?: Reason; until?: string | null; admin?: boolean; trial?: boolean }
     if (r.ok) {
       wantTrial(false)

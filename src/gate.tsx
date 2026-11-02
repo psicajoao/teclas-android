@@ -19,7 +19,7 @@ const SLIDES = [
 function seen(): boolean { try { return !!localStorage.getItem(SEEN) } catch { return false } }
 function markSeen() { try { localStorage.setItem(SEEN, '1') } catch { /* ok */ } }
 
-function Welcome({ acc, onEnter }: { acc: Access | null; onEnter: () => void }) {
+function Welcome({ acc, onEnter }: { acc: Access | null; onEnter: () => void | Promise<void> }) {
   const last = SLIDES.length
   /** Quem ainda não tem acesso vai direto para a tela de e-mail (sem passar pelos slides). */
   const [i, setI] = useState(acc && !acc.ok ? last : 0)
@@ -51,28 +51,31 @@ function Welcome({ acc, onEnter }: { acc: Access | null; onEnter: () => void }) 
     if (pass !== pass2) { setMsg('As duas senhas não são iguais.'); return }
     setBusy(true); setMsg('')
     const r = await signUp(email, pass)
-    setBusy(false)
-    if (r.err) setMsg(/already|registered/i.test(r.err) ? 'Este e-mail já tem conta. Toque em "Já tenho conta".' : 'Não consegui criar a conta: ' + r.err)
-    else if (r.confirm) setMode('confirmar')
-    else onEnter()
+    if (r.err) { setBusy(false); setMsg(/already|registered/i.test(r.err) ? 'Este e-mail já tem conta. Toque em "Já tenho conta".' : 'Não consegui criar a conta: ' + r.err); return }
+    if (r.confirm) { setBusy(false); setMode('confirmar'); return }
+    setMsg('Entrando…')
+    await onEnter()
+    setBusy(false); setMsg('')
   }
 
   const login = async () => {
     if (!validEmail() || !pass) { setMsg('Digite o e-mail e a senha.'); return }
     setBusy(true); setMsg('')
     const err = await signInPassword(email, pass)
-    setBusy(false)
-    if (err) setMsg(/confirm/i.test(err) ? 'Falta confirmar o e-mail. Abra o e-mail que enviamos e toque no botão de confirmar.' : 'E-mail ou senha incorretos.')
-    else onEnter()
+    if (err) { setBusy(false); setMsg(/confirm/i.test(err) ? 'Falta confirmar o e-mail. Abra o e-mail que enviamos e toque no botão de confirmar.' : 'E-mail ou senha incorretos.'); return }
+    setMsg('Entrando…')
+    await onEnter()
+    setBusy(false); setMsg('')
   }
 
   const confirm = async () => {
     if (code.trim().length < 6) { setMsg('Digite o código que chegou no e-mail.'); return }
     setBusy(true); setMsg('')
     const err = await confirmSignUp(email, code)
-    setBusy(false)
-    if (err) setMsg('Código não confere. Confira o e-mail ou crie a conta de novo.')
-    else onEnter()
+    if (err) { setBusy(false); setMsg('Código não confere. Confira o e-mail ou crie a conta de novo.'); return }
+    setMsg('Conta confirmada. Entrando…')
+    await onEnter()
+    setBusy(false); setMsg('')
   }
 
   const forgot = async () => {
@@ -84,6 +87,7 @@ function Welcome({ acc, onEnter }: { acc: Access | null; onEnter: () => void }) 
   }
 
   const denied = acc && !acc.ok && acc.reason !== 'no_session' ? REASON_TEXT[acc.reason] : ''
+  const detail = acc && !acc.ok && acc.detail ? ' (' + acc.detail + ')' : ''
 
   return (
     <div className="wl">
@@ -133,7 +137,7 @@ function Welcome({ acc, onEnter }: { acc: Access | null; onEnter: () => void }) 
               </>
             ) : (
               <>
-                <p>{denied || 'Entre com o e-mail e a senha da sua conta.'}</p>
+                <p>{denied ? denied + detail : 'Entre com o e-mail e a senha da sua conta.'}</p>
                 <input id="wl-email" type="email" inputMode="email" autoComplete="email" placeholder="seu@email.com" value={email} onChange={(e) => setEmail(e.target.value)} />
                 <input type="password" autoComplete="current-password" placeholder="senha" value={pass} onChange={(e) => setPass(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') login() }} />
                 <button className="wl-btn" disabled={busy} onClick={login}>{busy ? 'Entrando…' : 'Entrar'}</button>
@@ -142,6 +146,7 @@ function Welcome({ acc, onEnter }: { acc: Access | null; onEnter: () => void }) 
                 {BUY_URL && <a className="wl-btn o" href={BUY_URL} target="_blank" rel="noreferrer">Comprar licença (R$ 199)</a>}
               </>
             )}
+            {mode !== 'entrar' && denied && !msg && <p className="wl-err">{denied}{detail}</p>}
             {msg && <p className="wl-err">{msg}</p>}
             {accessEnabled && acc && !acc.ok && acc.reason !== 'no_session' && (
               <button className="wl-link" onClick={async () => { await signOut(); onEnter() }}>Sair desta conta</button>
@@ -372,7 +377,16 @@ export default function Gate() {
   // Quem já está liberado nunca vê as boas-vindas: elas só aparecem antes do primeiro acesso.
   useEffect(() => { if (acc && acc.ok && welcome) { markSeen(); setWelcome(false) } }, [acc, welcome])
 
-  const enter = async () => { markSeen(); setWelcome(false); await recheck() }
+  /** Confere o acesso; logo depois de criar a conta ou entrar, tenta de novo se a sessão ainda não assentou. */
+  const enter = async () => {
+    markSeen(); setWelcome(false)
+    for (let n = 0; n < 4; n++) {
+      const a = await checkAccess()
+      setAcc(a)
+      if (a.ok || !['no_session', 'offline', 'error'].includes(a.reason)) return
+      await new Promise((r) => setTimeout(r, 1500))
+    }
+  }
 
   if (unsupportedDevice()) return <Unsupported />
   // Teste de iPad: só a conta de administrador passa; os demais veem a mensagem de aparelho não compatível.
