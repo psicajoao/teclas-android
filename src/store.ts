@@ -21,7 +21,7 @@ export const newSong = (name = 'Nova música'): Song => ({
   bpm: 120,
   transpose: 0,
   sections: [
-    { name: 'Intro', layers: pad([L('gm89', 85)]) },
+    { name: 'Intro', layers: pad([L('gm0', 100), L('gm89', 70)]) },
     { name: 'Verso', layers: pad([L('gm0', 100), L('gm89', 55)]) },
     { name: 'Refrão', layers: pad([L('gm0', 100), L('gm48', 80), L('gm89', 65)]) },
     { name: 'Ponte', layers: pad([L('gm94', 90), L('gm0', 65, 'right')]) },
