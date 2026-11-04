@@ -16,7 +16,7 @@ import { slotsOf, fxDef, groupSummary } from './fx'
 import type { FxSlot } from './fx'
 import { audioOn } from './engine'
 import { TIMBRES, GROUPS, FAVORITES, CUSTOM_GROUP, customVersion } from './timbres'
-import { PACK_GROUP, ORIGIN_MS } from './pack'
+import { PACK_GROUP } from './pack'
 import { synTempo } from './synth'
 import { Drawer, SettingsPanel, LearnPanel } from './panels'
 import { Manual } from './manual'
@@ -532,7 +532,7 @@ function Picker({ onPick, onClose, padMode }: { onPick: (id: string | null) => v
         <div className="cards">
           {!showFolders && shown.map((t) => (
             <button key={t.id} className={'card' + (isCustom && edit ? ' edit' : '')} disabled={busy} onClick={() => (isCustom && edit ? void removeSound(t) : onPick(t.id))}>
-              <small>{t.drum ? 'Kit' : t.syn ? 'Sint.' : t.group === CUSTOM_GROUP ? (t.src ?? '') : t.origin ? (t.origin === 'Palco Keys' ? 'Palco Keys' : t.origin === ORIGIN_MS ? 'MuseScore' : 'GeneralUser') : t.program + 1}</small>
+              <small>{t.drum ? 'Kit' : t.syn ? 'Sint.' : t.group === CUSTOM_GROUP ? (t.src ?? '') : t.origin ? '' : t.program + 1}</small>
               {t.name}
             </button>
           ))}
