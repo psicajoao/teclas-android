@@ -86,6 +86,7 @@ const SECTIONS: Sec[] = [
           <li>O <b>+</b> ao lado de "Todas as músicas" cria uma música nova. Dê um nome, escolha o tom do Pad e monte as seções.</li>
           <li>Em cima das camadas ficam o nome da música, as setas ◀ ▶ para mudar de música, e os botões <b>Duplicar</b> e <b>Excluir música</b>.</li>
           <li>No teclado do computador, <b>Page Up</b> e <b>Page Down</b> trocam de música.</li>
+          <li><b>Troca sem cortar o som:</b> se você estiver segurando uma tecla ou o pedal de sustain, ao mudar de música o som que está tocando continua até o fim, com o timbre da música anterior. As notas novas já usam os timbres da música nova.</li>
           <li><b>Listas</b> (ao lado de "Todas as músicas") servem para montar o repertório do dia, por exemplo "Culto de domingo". A biblioteca guarda todas as músicas; cada lista escolhe e ordena as do dia. Toque nas músicas, na ordem em que quer tocar. Para reordenar, segure e arraste.</li>
         </ul>
       </>
