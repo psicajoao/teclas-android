@@ -13,7 +13,7 @@ const SLIDES = [
   { img: '2.jpg', t: 'Escolha o timbre em segundos', p: 'Pianos, cordas, pads e corais organizados em pastas. Favoritos sempre à mão.' },
   { img: '3.jpg', t: 'Biblioteca de sons', p: 'Instale bancos de sons com um toque e deixe o app com a sua cara.' },
   { img: '4.jpg', t: 'Regiões do teclado', p: 'Divida o teclado e toque baixo, pad e solo ao mesmo tempo.' },
-  { img: '5.jpg', t: 'Feito para computador', p: 'Computador com Windows, macOS ou Linux, no Chrome ou Edge. Instale pelo navegador e use até sem internet.' },
+  { img: '5.jpg', t: 'Feito para computador', p: 'Computador com Windows ou macOS, no Chrome ou Edge. Instale pelo navegador e use até sem internet.' },
 ]
 
 function seen(): boolean { try { return !!localStorage.getItem(SEEN) } catch { return false } }
@@ -190,7 +190,7 @@ function Unsupported() {
       <main className="wl-main">
         <div className="wl-login">
           <h2>Este aparelho não é compatível</h2>
-          <p>O Palco Keys é feito para computador, com Windows, macOS ou Linux, usando Chrome ou Edge. Abra este endereço no seu computador.</p>
+          <p>O Palco Keys é feito para computador, com Windows ou macOS, usando Chrome ou Edge. Abra este endereço no seu computador.</p>
         </div>
       </main>
     </div>

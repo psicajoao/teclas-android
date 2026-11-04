@@ -7,7 +7,7 @@ const SECTIONS: Sec[] = [
     id: 'comecar', title: 'Primeiros passos',
     body: (
       <>
-        <p>O Palco Keys é um teclado de palco que roda no navegador do computador (Windows, macOS ou Linux), no Chrome ou no Edge. Você toca num teclado MIDI e escolhe, música por música, os timbres, as seções e os efeitos.</p>
+        <p>O Palco Keys é um teclado de palco que roda no navegador do computador (Mac ou Windows), no Chrome ou no Edge. Você toca num teclado MIDI e escolhe, música por música, os timbres, as seções e os efeitos.</p>
         <ol>
           <li>Abra o endereço do Palco Keys no Chrome ou no Edge e entre com a sua conta.</li>
           <li>Toque em <b>Iniciar</b>. Isso liga o áudio e conecta o teclado MIDI.</li>
@@ -236,7 +236,7 @@ const SECTIONS: Sec[] = [
           <dt>Troquei de computador e as músicas sumiram.</dt>
           <dd>Importe o backup feito no computador antigo, em Configurações.</dd>
           <dt>Este aparelho não é compatível.</dt>
-          <dd>O Palco Keys é só para computador, no Chrome ou no Edge. Celulares e tablets não são aceitos.</dd>
+          <dd>O Palco Keys é só para computador Mac ou Windows, no Chrome ou no Edge. Por enquanto, iPad, tablets e celulares não são aceitos.</dd>
         </dl>
       </>
     ),
