@@ -2,7 +2,7 @@ import { createValue } from './signal'
 import { noteName } from './midi'
 
 /** Uma mensagem MIDI ensinada a um controle da tela. */
-export type Binding = { kind: 'cc' | 'note' | 'pc'; ch: number; num: number }
+export type Binding = { kind: 'cc' | 'note' | 'pc' | 'bend'; ch: number; num: number }
 export type Bindings = Record<string, Binding>
 
 const KEY = 'teclas-android.learn'
@@ -66,6 +66,7 @@ export const findAction = (kind: Binding['kind'], ch: number, num: number) => in
 export function describeBinding(b: Binding): string {
   const ch = ` · canal ${b.ch + 1}`
   if (b.kind === 'cc') return `CC ${b.num}${ch}`
+  if (b.kind === 'bend') return `Fader (pitch bend)${ch}`
   if (b.kind === 'pc') return `Program ${b.num + 1}${ch}`
   return `Nota ${noteName(b.num)}${ch}`
 }

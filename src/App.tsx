@@ -786,20 +786,25 @@ export default function App() {
         if (w.__lag.length > 8) w.__lag.shift()
       }
       const ev = parseMidi(e.data, e.timeStamp)
-      if (!ev) return
+      if (!ev) {
+        // mensagens que o app não usa (aftertouch, sistema…): só aparecem no diagnóstico
+        if (e.data[0] < 0xf8 && roleOf((e.target as MIDIInput | null)?.id ?? '') !== 'ignore')
+          lastMsgValue.set(`Outra mensagem (${Array.from(e.data.slice(0, 6)).map((x) => x.toString(16).padStart(2, '0')).join(' ')}) · ${(e.target as MIDIInput | null)?.name ?? 'MIDI'}`)
+        return
+      }
       const src = (e.target as MIDIInput | null)?.id ?? ''
       const role = roleOf(src)
       if (role === 'ignore') return
       const srcName = (e.target as MIDIInput | null)?.name ?? 'MIDI'
-      if (ev.type === 'noteOn' || ev.type === 'noteOff' || ev.type === 'cc' || ev.type === 'pc') {
-        const kind = ev.type === 'cc' ? 'cc' : ev.type === 'pc' ? 'pc' : 'note'
-        const num = ev.type === 'cc' ? ev.controller : ev.type === 'pc' ? ev.program : ev.note
-        const val = ev.type === 'cc' ? ev.value : ev.type === 'noteOn' ? ev.velocity : ev.type === 'pc' ? 127 : 0
-        lastMsgValue.set(`${kind === 'cc' ? 'CC ' + num : kind === 'pc' ? 'Program ' + (num + 1) : (ev.type === 'noteOn' ? 'Nota ' : 'Soltou ') + noteName(num)} · canal ${ev.channel + 1} · ${srcName}`)
+      if (ev.type === 'noteOn' || ev.type === 'noteOff' || ev.type === 'cc' || ev.type === 'pc' || ev.type === 'bend') {
+        const kind = ev.type === 'cc' ? 'cc' : ev.type === 'pc' ? 'pc' : ev.type === 'bend' ? 'bend' : 'note'
+        const num = ev.type === 'cc' ? ev.controller : ev.type === 'pc' ? ev.program : ev.type === 'bend' ? 0 : ev.note
+        const val = ev.type === 'cc' ? ev.value : ev.type === 'bend' ? ev.value >> 7 : ev.type === 'noteOn' ? ev.velocity : ev.type === 'pc' ? 127 : 0
+        lastMsgValue.set(`${kind === 'cc' ? 'CC ' + num : kind === 'pc' ? 'Program ' + (num + 1) : kind === 'bend' ? 'Pitch bend / fader ' + val : (ev.type === 'noteOn' ? 'Nota ' : 'Soltou ') + noteName(num)} · canal ${ev.channel + 1} · ${srcName}`)
         // MIDI Learn: a próxima mensagem vira o controle que está esperando
         const waiting = waitingValue.get()
         if (waiting) {
-          const take = ev.type === 'noteOn' || ev.type === 'pc' || (ev.type === 'cc' && true)
+          const take = ev.type === 'noteOn' || ev.type === 'pc' || ev.type === 'cc' || ev.type === 'bend'
           if (take) {
             setBinding(waiting, { kind, ch: ev.channel, num })
             waitingValue.set(null)
@@ -1215,7 +1220,7 @@ export default function App() {
       return setSustain(on)
     }
     // botões: disparam ao apertar (e uma vez só por aperto quando vêm como CC)
-    if (kind === 'cc') {
+    if (kind === 'cc' || kind === 'bend') {
       const was = lastOn.current[id] ?? false
       lastOn.current[id] = on
       if (!on || was) return
