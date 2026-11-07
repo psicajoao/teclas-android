@@ -30,6 +30,9 @@ const SECTIONS: Sec[] = [
           <li>Trocou ou ligou o teclado depois de abrir o app? Use <b>Procurar de novo</b>.</li>
           <li>O botão <b>Testar MIDI</b>, na tela inicial, mostra as notas que o app está recebendo.</li>
         </ul>
+        <p>
+          <b>Controladores Bluetooth:</b> alguns aparelhos, como o M-Vave SMC, nem sempre conseguem parear direto com o Mac. Nesse caso, use um adaptador Bluetooth MIDI conectado ao computador, ligue o controlador e espere a luz do Bluetooth ficar fixa. Ele aparece em Configurações › MIDI como um dispositivo comum. Depois, use o <b>MIDI Learn</b> para vincular os faders e botões aos controles da tela. Antes de conectar no computador, desconecte o controlador de outros aparelhos (celular ou iPad), porque ele só fala com um de cada vez.
+        </p>
         <p>Se aparecer "O MIDI foi bloqueado neste navegador", abra no Chrome e permita o acesso ao MIDI (cadeado na barra de endereço).</p>
       </>
     ),
