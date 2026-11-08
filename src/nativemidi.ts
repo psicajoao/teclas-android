@@ -30,6 +30,36 @@ class NativeInput {
   }
 }
 
+/** O CoreMIDI pode entregar várias mensagens juntas no mesmo pacote (acordes, running status): separa uma por uma. */
+export function splitMidi(b: number[]): number[][] {
+  const out: number[][] = []
+  const need = (s: number) => (s >= 0xf8 ? 1 : s === 0xf6 ? 1 : s === 0xf1 || s === 0xf3 ? 2 : s === 0xf2 ? 3 : s >= 0xc0 && s < 0xe0 ? 2 : 3)
+  let i = 0
+  let running = 0
+  while (i < b.length) {
+    const s = b[i]
+    if (s >= 0xf8) { out.push([s]); i++; continue }
+    if (s === 0xf0) {
+      let j = i + 1
+      while (j < b.length && b[j] !== 0xf7) j++
+      out.push(b.slice(i, Math.min(j + 1, b.length)))
+      i = j + 1; running = 0
+      continue
+    }
+    let status = s
+    let start = i + 1
+    if (s < 0x80) { if (!running) { i++; continue } status = running; start = i }
+    else running = s < 0xf0 ? s : 0
+    const n = need(status) - 1
+    const msg = [status]
+    let k = start
+    while (msg.length < n + 1 && k < b.length && b[k] < 0x80) msg.push(b[k++])
+    if (msg.length === n + 1) out.push(msg)
+    i = k
+  }
+  return out
+}
+
 if (cap?.isNativePlatform?.()) {
   let accessP: Promise<unknown> | null = null
   const start = async () => {
@@ -66,7 +96,7 @@ if (cap?.isNativePlatform?.()) {
         const prev = w.__pkBridge
         w.__pkBridge = { bridge, age: first.age ?? 0, max: prev && Date.now() - prev.at < 5000 ? Math.max(prev.max, bridge) : bridge, at: Date.now() }
       }
-      if (input) for (const ev of d.events) input.emit(ev.data)
+      if (input) for (const ev of d.events) for (const m of splitMidi(ev.data)) input.emit(m)
     }) as (d: never) => void)
     sync((await plugin.start()).ports)
     return access
