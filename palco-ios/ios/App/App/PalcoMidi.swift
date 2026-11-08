@@ -105,12 +105,18 @@ public class PalcoMidiPlugin: CAPPlugin, CAPBridgedPlugin {
         let token = ref.map { Int(bitPattern: $0) } ?? 0
         lock.lock(); let portId = tokens[token] ?? ""; lock.unlock()
         var events: [[String: Any]] = []
+        // Medição: idade do pacote no CoreMIDI e instante do envio para o app (para medir a ponte nativo → app).
+        var tb = mach_timebase_info_data_t(); mach_timebase_info(&tb)
+        let nowTicks = mach_absolute_time()
+        let sentMs = Date().timeIntervalSince1970 * 1000
         for packet in list.unsafeSequence() {
             let len = Int(packet.pointee.length)
             let bytes: [Int] = withUnsafeBytes(of: packet.pointee.data) { raw in
                 raw.prefix(len).map { Int($0) }
             }
-            events.append(["data": bytes, "t": Double(packet.pointee.timeStamp)])
+            let ts = packet.pointee.timeStamp
+            let ageMs: Double = (ts == 0 || nowTicks < ts) ? 0 : Double(nowTicks - ts) * Double(tb.numer) / Double(tb.denom) / 1_000_000
+            events.append(["data": bytes, "t": Double(ts), "age": ageMs, "sent": sentMs])
         }
         if !events.isEmpty { notifyListeners("midi", data: ["port": portId, "events": events]) }
     }

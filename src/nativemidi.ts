@@ -4,7 +4,7 @@
  * Fora do app nativo (navegador comum) não faz nada.
  */
 type Cap = { isNativePlatform?: () => boolean }
-type Ev = { data: number[]; t: number }
+type Ev = { data: number[]; t: number; age?: number; sent?: number }
 type PortInfo = { id: string; name: string }
 
 const cap = (window as unknown as { Capacitor?: Cap }).Capacitor
@@ -58,6 +58,14 @@ if (cap?.isNativePlatform?.()) {
     await plugin.addListener('ports', ((d: { ports: PortInfo[] }) => sync(d.ports)) as (d: never) => void)
     await plugin.addListener('midi', ((d: { port: string; events: Ev[] }) => {
       const input = inputs.get(d.port) ?? [...inputs.values()][0]
+      // Medição para a tela de Áudio: ponte nativo → app (ms) e idade do pacote no CoreMIDI (ms).
+      const first = d.events[0]
+      if (first && typeof first.sent === 'number') {
+        const w = window as unknown as { __pkBridge?: { bridge: number; age: number; max: number; at: number } }
+        const bridge = Math.max(0, Date.now() - first.sent)
+        const prev = w.__pkBridge
+        w.__pkBridge = { bridge, age: first.age ?? 0, max: prev && Date.now() - prev.at < 5000 ? Math.max(prev.max, bridge) : bridge, at: Date.now() }
+      }
       if (input) for (const ev of d.events) input.emit(ev.data)
     }) as (d: never) => void)
     sync((await plugin.start()).ports)

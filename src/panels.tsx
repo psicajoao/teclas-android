@@ -163,6 +163,7 @@ function AudioTab({ latency }: { latency: { handler: number; output: number } | 
   const [sink, setSink] = useState('')
   const [err, setErr] = useState('')
   const [gain, setGain] = useState(engine.outGainDb)
+  const nb = (window as unknown as { __pkBridge?: { bridge: number; age: number; max: number } }).__pkBridge
   useEffect(() => {
     const t = setInterval(() => tick((n) => n + 1), 1000)
     navigator.mediaDevices
@@ -210,6 +211,12 @@ function AudioTab({ latency }: { latency: { handler: number; output: number } | 
             <>
               <dt>Última nota medida</dt>
               <dd>{latency.handler + latency.output} ms</dd>
+            </>
+          )}
+          {nb && (
+            <>
+              <dt>Ponte do teclado (iPad → app)</dt>
+              <dd>{Math.round(nb.bridge)} ms <small>(pico em 5 s: {Math.round(nb.max)} ms · no CoreMIDI: {nb.age.toFixed(1)} ms)</small></dd>
             </>
           )}
         </dl>
