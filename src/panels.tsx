@@ -162,6 +162,7 @@ function AudioTab({ latency }: { latency: { handler: number; output: number } | 
   const [outs, setOuts] = useState<MediaDeviceInfo[]>([])
   const [sink, setSink] = useState('')
   const [err, setErr] = useState('')
+  const [gain, setGain] = useState(engine.outGainDb)
   useEffect(() => {
     const t = setInterval(() => tick((n) => n + 1), 1000)
     navigator.mediaDevices
@@ -212,6 +213,14 @@ function AudioTab({ latency }: { latency: { handler: number; output: number } | 
             </>
           )}
         </dl>
+      </div>
+      <div className="set-card">
+        <h3>Volume de saída</h3>
+        <label className="set-field">
+          Ganho geral: +{gain} dB
+          <input type="range" min={0} max={12} step={1} value={gain} onChange={(e) => { const v = Number(e.target.value); setGain(v); engine.setOutGainDb(v) }} />
+        </label>
+        <p className="set-note">Aumenta o volume de tudo, com um limitador suave para o som não estourar. Se algum timbre soar apertado ou distorcido, diminua.</p>
       </div>
       <div className="set-card">
         <h3>Saída de áudio</h3>

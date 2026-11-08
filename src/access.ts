@@ -14,7 +14,8 @@ function testOn(): boolean {
     return !!localStorage.getItem(GATE_KEY)
   } catch { return false }
 }
-export const accessEnabled = !!(SUPABASE_URL && SUPABASE_ANON_KEY) && (GATE_MODE !== 'test' || testOn())
+// VITE_PERSONAL=1: build só do iPad do dono (palco-ios), sem login. Nunca é usado no site nem no app vendido.
+export const accessEnabled = import.meta.env.VITE_PERSONAL !== '1' && !!(SUPABASE_URL && SUPABASE_ANON_KEY) && (GATE_MODE !== 'test' || testOn())
 
 /** Quantos dias o app segue liberado sem conseguir falar com o servidor (tocar sem internet). */
 const GRACE_DAYS = 7

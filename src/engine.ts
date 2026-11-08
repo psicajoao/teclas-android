@@ -17,6 +17,14 @@ export class Engine {
   ctx: AudioContext | null = null
   synth: WorkletSynthesizer | null = null
   private analyser: AnalyserNode | null = null
+  private outGain: GainNode | null = null
+  /** Ganho de saída em dB (0 a +12). Guardado no aparelho. */
+  outGainDb: number = (() => { try { const v = Number(localStorage.getItem('pk.outgain')); return localStorage.getItem('pk.outgain') !== null && isFinite(v) ? Math.max(0, Math.min(12, v)) : 6 } catch { return 6 } })()
+  setOutGainDb(db: number) {
+    this.outGainDb = Math.max(0, Math.min(12, db))
+    try { localStorage.setItem('pk.outgain', String(this.outGainDb)) } catch { /* */ }
+    if (this.outGain) this.outGain.gain.value = Math.pow(10, this.outGainDb / 20) * 0.5
+  }
   /** Cadeia (compressor/EQ…) de cada canal: só existe enquanto o canal tem algo alterado. */
   chains: (ChanFx | null)[] = Array(16).fill(null)
   /** Aplica a página de som (compressor/EQ/ajustes) de um canal MIDI. */
@@ -130,7 +138,22 @@ export class Engine {
     const synth = new WorkletSynthesizer(ctx)
     const analyser = ctx.createAnalyser()
     analyser.fftSize = 512
-    analyser.connect(ctx.destination)
+    // Saída: ganho ajustável + limitador suave (sem atraso). Abaixo de 0,8 o som passa intacto; acima disso o pico é arredondado, sem estourar.
+    const outGain = ctx.createGain()
+    const soft = ctx.createWaveShaper()
+    const N = 4097
+    const curve = new Float32Array(N)
+    for (let i = 0; i < N; i++) {
+      const x = ((i / (N - 1)) * 2 - 1) * 2 // o ganho já vem pela metade, então a curva cobre de -2 a +2
+      const a = Math.abs(x)
+      curve[i] = Math.sign(x) * (a < 0.8 ? a : 0.8 + 0.2 * Math.tanh((a - 0.8) / 0.2))
+    }
+    soft.curve = curve
+    analyser.connect(outGain)
+    outGain.connect(soft)
+    soft.connect(ctx.destination)
+    this.outGain = outGain
+    this.setOutGainDb(this.outGainDb)
     this.analyser = analyser
     this.synVoices = new SynthVoices(ctx, analyser)
     // tudo vai direto para a saída; um canal só passa por uma cadeia própria quando a página de som dele está alterada

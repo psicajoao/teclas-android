@@ -10,7 +10,7 @@
     "@capacitor/cli": "^8.5.3"
   },
   "scripts": {
-    "web": "cd .. && VITE_ALLOW_IPAD=1 npx vite build --outDir palco-ios/www --emptyOutDir",
+    "web": "cd .. && VITE_ALLOW_IPAD=1 VITE_PERSONAL=1 npx vite build --outDir palco-ios/www --emptyOutDir",
     "sync": "npm run web && cap sync ios",
     "abrir": "cap open ios"
   }

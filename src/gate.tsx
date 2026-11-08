@@ -259,6 +259,7 @@ function TestLogin({ acc }: { acc: Access | null }) {
             </>
           )}
           {msg && <p className="wl-err">{msg}</p>}
+          {acc && !acc.ok && acc.reason !== 'no_session' && <p className="wl-err">Diagnóstico: {acc.reason}{acc.detail ? ' · ' + acc.detail : ''}</p>}
           {nonAdmin && <button className="wl-link" onClick={() => forceSignOut()}>Sair desta conta</button>}
         </div>
       </main>
