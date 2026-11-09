@@ -40,6 +40,13 @@ export const PACK: PackTimbre[] = [
 // aparecem para todos, sem baixar nada. Cada um tem equalizador (60 Hz … 16 kHz) e vozes ajustados.
 const PAD = (extra?: Partial<NonNullable<SndPatch['set']>>) => ({ voices: 32, ...extra })
 export const PACK_BUILTIN: PackTimbre[] = [
+  // Pianos com corpo: o peso do piano está em 150–400 Hz; o "som de lata" vem de 2–10 kHz. Aqui sobe o corpo, tira a lata,
+  // e o compressor deixa as notas mais cheias e longas. Do mais leve (Corpo) ao mais encorpado (Grande); Concerto é mais limpo e com sala.
+  { id: 'pk.piano-corpo', name: 'Piano Cauda Corpo', program: 0, snd: { eq: { on: true, bands: [3, 5, 3, 0, -1, -2, -3, -4] }, comp: { on: true, ratio: 3, threshold: -22, attack: 15, release: 250, mix: 100, outGain: 3 }, space: { rev: 0.2, dly: 0, shim: 0 }, set: PAD({ voices: 48 }) } },
+  { id: 'pk.piano-grande', name: 'Piano Cauda Grande', program: 0, snd: { eq: { on: true, bands: [4, 6, 4, 1, -1, -3, -4, -5] }, comp: { on: true, ratio: 4, threshold: -26, attack: 18, release: 300, mix: 100, outGain: 4 }, space: { rev: 0.35, dly: 0, shim: 0 }, set: PAD({ voices: 48 }) } },
+  { id: 'pk.piano-concerto', name: 'Piano Cauda Concerto', program: 0, snd: { eq: { on: true, bands: [2, 4, 3, 1, 0, -1, -2, -2] }, comp: { on: true, ratio: 2.5, threshold: -20, attack: 20, release: 280, mix: 100, outGain: 2 }, space: { rev: 0.5, dly: 0, shim: 0 }, set: PAD({ voices: 48 }) } },
+  // Camada de apoio: o mesmo piano uma oitava abaixo, só com graves. Use numa 2ª camada com volume baixo (25–40) para dar peso.
+  { id: 'pk.piano-base-grave', name: 'Piano Base Grave', program: 0, snd: { eq: { on: true, bands: [3, 3, 0, -4, -9, -14, -18, -18] }, comp: { on: true, ratio: 3, threshold: -22, attack: 15, release: 250, mix: 100, outGain: 2 }, set: PAD({ voices: 32, transpose: -12 }) } },
   // Pianos com espaço (reverb profundo e eco no andamento)
   { id: 'pk.piano-profundo', name: 'Piano Cauda Profundo', program: 0, snd: { eq: { on: true, bands: [3, 2, 1, 0, 0, -1, -1, -2] }, space: { rev: 0.8, dly: 0, shim: 0 }, set: PAD() } },
   { id: 'pk.piano-eco', name: 'Piano Eco Ambiente', program: 0, snd: { eq: { on: true, bands: [3, 2, 1, 0, 0, -1, -1, -2] }, space: { rev: 0.6, dly: 0.4, shim: 0 }, set: PAD() } },
