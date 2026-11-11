@@ -89,7 +89,7 @@ export function registerCustom(banks: { bank: { slot: number; name: string }; pa
 }
 
 export const GROUPS = [...(premiumEnabled ? [PREMIUM_GROUP] : []), ...FAMILIES.map((f) => f.group), SYNTH_GROUP, PACK_GROUP, 'Bateria']
-if (premiumEnabled) for (const m of PREMIUM) TIMBRES.push({ id: m.id, name: m.name, program: m.program, group: PREMIUM_GROUP, bank: m.offset, lsb: 0, src: 'Meus sons' })
+if (premiumEnabled) for (const m of PREMIUM) TIMBRES.push({ id: m.id, name: m.name, program: m.program, group: PREMIUM_GROUP, fam: m.fam, bank: m.offset, lsb: 0, src: 'Meus sons' })
 
 // Timbres de louvor mais usados, para acesso rápido.
 export const FAVORITES = ['gm0', 'gm4', 'gm19', 'gm48', 'gm49', 'gm52', 'gm89', 'gm94']
