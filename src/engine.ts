@@ -2,6 +2,8 @@ import { WorkletSynthesizer } from 'spessasynth_lib'
 import { createValue } from './signal'
 import { listBanks, getBankData, ensureMigrated, bankInfo, BANK_STEP, customStatus } from './bank'
 import { registerCustom } from './timbres'
+import { premiumByOffset } from './premium'
+import type { PremiumItem } from './premium'
 import type { BankMeta } from './bank'
 import { ChanFx, isNeutral, defaultSnd } from './chanfx'
 import { SpaceBus } from './space'
@@ -220,21 +222,26 @@ export class Engine {
     const known = new Set(synth.presetList.map(key))
     const found: { bank: BankMeta; patches: typeof synth.presetList }[] = []
     const metas = listBanks()
+    console.log('PK LISTA', JSON.stringify(metas.map((m) => [m.slot, m.name, m.size])))
     let n = 0
     for (const meta of metas) {
       n++
       customStatus.set(`Carregando SoundFont ${n}/${metas.length}: ${meta.name.replace(/\.sf[23]$/i, '')}…`)
       try {
+        console.log('PK carregando banco', meta.slot, meta.name)
         const data = await getBankData(meta.slot)
+        console.log('PK lido', meta.slot, data ? data.byteLength : 0)
         if (!data) throw new Error('vazio')
         const before = synth.presetList.length
         await Promise.race([synth.soundBankManager.addSoundBank(data, `bk${meta.slot}`, meta.slot * BANK_STEP), new Promise((_, rej) => setTimeout(() => rej(new Error('demorou demais')), 120000))])
         for (let i = 0; i < 25 && synth.presetList.length === before; i++) await new Promise((r) => setTimeout(r, 60))
+        console.log('PK banco ok', meta.slot)
         const fresh = synth.presetList.filter((p) => !known.has(key(p)))
         fresh.forEach((p) => known.add(key(p)))
         found.push({ bank: meta, patches: fresh })
         registerCustom(found)
       } catch (e) {
+        console.log('PK banco ERRO', meta.slot, String(e))
         bankInfo.failed.push(meta.name)
         bankInfo.reasons[meta.name] = { slot: meta.slot, why: e instanceof Error ? e.message : String(e) }
       }
@@ -412,6 +419,60 @@ export class Engine {
       this.cc(32, lsb, channel)
     }
     this.synth?.programChange(channel, program)
+    this.chanBank[channel] = channel === 9 ? 0 : bank
+    const pm = channel === 9 ? undefined : premiumByOffset(bank)
+    if (pm && this.synth) {
+      void this.ensurePremium(pm).then(() => {
+        // o banco acabou de chegar: reaplica o timbre no canal, se ele ainda aponta para este banco
+        if (this.chanBank[channel] === bank && this.synth) {
+          this.cc(0, bank, channel)
+          this.cc(32, lsb, channel)
+          this.synth.programChange(channel, program)
+        }
+      }).catch(() => {})
+    }
+  }
+  private chanBank: number[] = Array(16).fill(0)
+  private premLoaded = new Map<string, { mb: number; t: number; offset: number }>()
+  private premLoading = new Map<string, Promise<void>>()
+  /** Biblioteca pessoal (só no iPad do João): carrega o SoundFont na primeira vez que o timbre é usado e descarrega os mais antigos. */
+  private ensurePremium(pm: PremiumItem): Promise<void> {
+    const got = this.premLoaded.get(pm.id)
+    if (got) { got.t = Date.now(); return Promise.resolve() }
+    const run = this.premLoading.get(pm.id)
+    if (run) return run
+    const job = (async () => {
+      const synth = this.synth!
+      const BUDGET = 450
+      let used = [...this.premLoaded.values()].reduce((a, b) => a + b.mb, 0)
+      const inUse = new Set(this.chanBank)
+      for (const [id, v] of [...this.premLoaded.entries()].sort((a, b) => a[1].t - b[1].t)) {
+        if (used + pm.mb <= BUDGET) break
+        if (inUse.has(v.offset)) continue
+        try { await synth.soundBankManager.deleteSoundBank(id) } catch { /* segue */ }
+        this.premLoaded.delete(id)
+        used -= v.mb
+      }
+      customStatus.set(`Carregando ${pm.name} (${pm.mb} MB)…`)
+      try {
+        const r = await fetch(`${import.meta.env.BASE_URL}sounds/premium/${pm.file}`)
+        if (!r.ok) throw new Error('arquivo não encontrado (' + r.status + ')')
+        const data = await r.arrayBuffer()
+        const before = synth.presetList.length
+        await synth.soundBankManager.addSoundBank(data, pm.id, pm.offset)
+        for (let i = 0; i < 25 && synth.presetList.length === before; i++) await new Promise((x) => setTimeout(x, 60))
+        this.premLoaded.set(pm.id, { mb: pm.mb, t: Date.now(), offset: pm.offset })
+        console.log('PK premium ok', pm.id)
+        customStatus.set('')
+      } catch (e) {
+        console.log('PK premium ERRO', pm.id, String(e))
+        customStatus.set(`Não carregou ${pm.name}: ${e instanceof Error ? e.message : String(e)}`)
+        setTimeout(() => customStatus.set(''), 8000)
+        throw e
+      }
+    })().finally(() => this.premLoading.delete(pm.id))
+    this.premLoading.set(pm.id, job)
+    return job
   }
   panic() {
     this.synth?.stopAll(true)

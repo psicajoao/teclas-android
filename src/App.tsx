@@ -10,6 +10,7 @@ import { addBanks, MAX_BANKS, ensurePack, removeBank, getHidden, setHidden, slot
 import type { Timbre } from './timbres'
 import { customStatus } from './bank'
 import { FxSheet } from './fxpanel'
+import { PREMIUM_GROUP, premiumEnabled } from './premium'
 import { SoundSheet } from './soundpanel'
 import { hasSnd, sndOf } from './chanfx'
 import { slotsOf, fxDef, groupSummary } from './fx'
@@ -390,9 +391,8 @@ function Picker({ onPick, onClose, padMode }: { onPick: (id: string | null) => v
   const ver = useValue(customVersion)
   const hasCustom = ver > 0 && TIMBRES.some((t) => t.group === CUSTOM_GROUP)
   const hasPack = ver >= 0 && TIMBRES.some((t) => t.group === PACK_GROUP)
-  const ordered = [PACK_GROUP, ...GROUPS.filter((g) => g !== PACK_GROUP)] // Worship vem primeiro, como atalho
-  const personal = import.meta.env.VITE_PERSONAL === '1'
-  const groups = [...(hasCustom || personal ? [CUSTOM_GROUP] : []), ...(padMode ? ordered.filter((g) => g !== 'Bateria') : ordered).filter((g) => g !== PACK_GROUP || hasPack)]
+  const ordered = premiumEnabled ? [PREMIUM_GROUP, PACK_GROUP, ...GROUPS.filter((g) => g !== PACK_GROUP && g !== PREMIUM_GROUP)] : [PACK_GROUP, ...GROUPS.filter((g) => g !== PACK_GROUP)] // Worship vem primeiro, como atalho
+  const groups = [...(hasCustom ? [CUSTOM_GROUP] : []), ...(padMode ? ordered.filter((g) => g !== 'Bateria') : ordered).filter((g) => g !== PACK_GROUP || hasPack)]
   const [group, setGroup] = useState<string>(hasCustom ? CUSTOM_GROUP : 'Favoritos')
   const [q, setQ] = useState('')
   const [bank, setBank] = useState<number | null>(null)
@@ -415,6 +415,7 @@ function Picker({ onPick, onClose, padMode }: { onPick: (id: string | null) => v
       setUp(null)
       reload(`${n} SoundFont(s) guardado(s). Recarregando…`)
     } catch (e) {
+      console.log('PK upload ERRO', String(e))
       setMsg('Não consegui guardar o arquivo: ' + (e instanceof Error ? e.message : String(e)))
       setBusy(false)
       setUp(null)
@@ -480,7 +481,7 @@ function Picker({ onPick, onClose, padMode }: { onPick: (id: string | null) => v
         {isCustom && (
           <div className="pick-tools">
             <input className="pick-search" type="search" placeholder="Buscar nos meus bancos…" value={q} onChange={(e) => setQ(e.target.value)} />
-            {personal && (listBanks().length >= MAX_BANKS ? (
+            {import.meta.env.VITE_UPLOAD === '1' && (listBanks().length >= MAX_BANKS ? (
               <button className="ghost addsf" onClick={() => setMsg('Lista cheia. Use Editar para remover algum.')}>＋ Adicionar</button>
             ) : (
               <label className="ghost addsf" aria-disabled={busy}>

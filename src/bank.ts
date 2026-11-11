@@ -85,11 +85,13 @@ export async function addBanks(files: File[], onStep?: (done: number, total: num
   let n = 0
   for (const f of files) {
     onStep?.(n, files.length, f.name)
+    console.log('PK upload inicio', f.name, f.size)
     await new Promise((r) => setTimeout(r, 30)) // deixa a tela atualizar antes de cada arquivo grande
     const slot = Array.from({ length: MAX_BANKS }, (_, i) => i + 1).find((s) => !list.some((b) => b.slot === s))
     if (!slot) break
     try { await navigator.storage?.persist?.() } catch { /* */ }
     const data = new Blob([f], { type: 'application/octet-stream' })
+    console.log('PK gravando slot', slot)
     const tx = db.transaction('lib', 'readwrite')
     tx.objectStore('lib').put(data, slot)
     await new Promise<void>((res, rej) => {
@@ -97,6 +99,7 @@ export async function addBanks(files: File[], onStep?: (done: number, total: num
       tx.onerror = () => rej(tx.error)
       tx.onabort = () => rej(tx.error)
     })
+    console.log('PK gravado ok', slot)
     list.push({ slot, name: f.name, size: f.size })
     saveList(list)
     n++
@@ -143,7 +146,7 @@ export const slotOf = (id: string) => parseInt(id.slice(2), 10)
 export async function ensurePack(onStage?: (t: string) => void): Promise<void> {
   try {
     // Não há mais envio nem Biblioteca: bancos antigos que ficaram guardados no aparelho saem (só o do pacote do app fica).
-    if (import.meta.env.VITE_PERSONAL !== '1') for (const b of listBanks()) if (!/MuseScore_General_Lite/i.test(b.name)) { try { await removeBank(b.slot) } catch { /* segue */ } }
+    for (const b of listBanks()) if (!/MuseScore_General_Lite/i.test(b.name)) { try { await removeBank(b.slot) } catch { /* segue */ } }
     if (listBanks().some((b) => /MuseScore_General_Lite/i.test(b.name))) return
     if (typeof navigator !== 'undefined' && navigator.onLine === false) return
     if (listBanks().length >= MAX_BANKS) return
