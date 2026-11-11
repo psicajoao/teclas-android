@@ -354,6 +354,12 @@ export class Engine {
     const nat = this.chanNative[channel]
     if (nat) {
       if (velocity === 0) return this.noteOff(note, channel)
+      // carrega o timbre pesado só na primeira nota (não no início do app: 300+ MB na memória travavam a abertura)
+      if (!this.nativeLoaded.has(nat)) {
+        const sp = this.nativeSpec[channel]
+        if (sp && sp.id === nat) void this.ensureNative(sp).catch(() => {})
+        return
+      }
       nativeSamplerNow()?.noteOn({ id: nat, note, vel: velocity })
       return
     }
@@ -443,7 +449,7 @@ export class Engine {
     if (pmn?.native) {
       this.chanNative[channel] = pmn.id
       this.chanBank[channel] = bank
-      void this.ensureNative({ id: pmn.id, file: 'premium/' + pmn.file, program: pmn.program, bank: 0, name: pmn.name, mb: pmn.mb })
+      this.nativeSpec[channel] = { id: pmn.id, file: 'premium/' + pmn.file, program: pmn.program, bank: 0, name: pmn.name, mb: pmn.mb }
       return
     }
     const nb = channel === 9 ? undefined : nativeBanks.get(bank)
@@ -451,7 +457,7 @@ export class Engine {
       const key = `${nb.file}:${lsb}:${program}`
       this.chanNative[channel] = key
       this.chanBank[channel] = bank
-      void this.ensureNative({ id: key, file: nb.file, program, bank: lsb, name: nb.name.replace(/\.sf2$/i, ''), mb: 0 })
+      this.nativeSpec[channel] = { id: key, file: nb.file, program, bank: lsb, name: nb.name.replace(/\.sf2$/i, ''), mb: 0 }
       return
     }
     this.chanNative[channel] = null
@@ -475,6 +481,7 @@ export class Engine {
   }
   private chanBank: number[] = Array(16).fill(0)
   private chanNative: (string | null)[] = Array(16).fill(null)
+  private nativeSpec: ({ id: string; file: string; program: number; bank: number; name: string; mb: number } | null)[] = Array(16).fill(null)
   private nativeLoaded = new Set<string>()
   private nativeLoading = new Map<string, Promise<void>>()
   /** Timbres pesados tocam no motor nativo do iPad: carrega o arquivo na primeira vez. */
