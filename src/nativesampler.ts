@@ -45,7 +45,9 @@ const FIRST_BANK = 41
 export async function refreshNativeLibrary(): Promise<NativeFile[]> {
   const pl = await nativeSampler()
   if (!pl) return []
+  console.log('PK lib: chamando library')
   const { files } = await pl.library()
+  console.log('PK lib: ok', files.length)
   for (let i = TIMBRES.length - 1; i >= 0; i--) if (TIMBRES[i].group === CUSTOM_GROUP) TIMBRES.splice(i, 1)
   nativeBanks.clear()
   files.forEach((f, i) => {

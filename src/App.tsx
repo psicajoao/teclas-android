@@ -927,7 +927,10 @@ export default function App() {
     try {
       await ensurePack(setStage)
       await engine.start()
-      try { await refreshNativeLibrary() } catch { /* sem biblioteca nativa */ }
+      // não deixa a biblioteca nativa segurar a entrada no app: espera no máximo 4 s
+      console.log('PK boot: biblioteca nativa…')
+      try { await Promise.race([refreshNativeLibrary(), new Promise((r) => setTimeout(r, 4000))]) } catch (e) { console.log('PK biblioteca ERRO', String(e)) }
+      console.log('PK boot: biblioteca passou')
       rig.master = volume
       rig.split = song.split
       rig.transpose = transpose
