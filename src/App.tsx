@@ -6,7 +6,7 @@ import type { Layer } from './rig'
 import { metro } from './metronome'
 import { bendValue, modValue, beatValue, rotorValue, activeNotes, useValue } from './signal'
 import { parseMidi, noteName, DRUM_NAMES } from './midi'
-import { ensurePack, removeBank, getHidden, setHidden, slotOf, listBanks, bankInfo } from './bank'
+import { addBanks, MAX_BANKS, ensurePack, removeBank, getHidden, setHidden, slotOf, listBanks, bankInfo } from './bank'
 import type { Timbre } from './timbres'
 import { customStatus } from './bank'
 import { FxSheet } from './fxpanel'
@@ -391,7 +391,8 @@ function Picker({ onPick, onClose, padMode }: { onPick: (id: string | null) => v
   const hasCustom = ver > 0 && TIMBRES.some((t) => t.group === CUSTOM_GROUP)
   const hasPack = ver >= 0 && TIMBRES.some((t) => t.group === PACK_GROUP)
   const ordered = [PACK_GROUP, ...GROUPS.filter((g) => g !== PACK_GROUP)] // Worship vem primeiro, como atalho
-  const groups = [...(hasCustom ? [CUSTOM_GROUP] : []), ...(padMode ? ordered.filter((g) => g !== 'Bateria') : ordered).filter((g) => g !== PACK_GROUP || hasPack)]
+  const personal = import.meta.env.VITE_PERSONAL === '1'
+  const groups = [...(hasCustom || personal ? [CUSTOM_GROUP] : []), ...(padMode ? ordered.filter((g) => g !== 'Bateria') : ordered).filter((g) => g !== PACK_GROUP || hasPack)]
   const [group, setGroup] = useState<string>(hasCustom ? CUSTOM_GROUP : 'Favoritos')
   const [q, setQ] = useState('')
   const [bank, setBank] = useState<number | null>(null)
@@ -402,6 +403,22 @@ function Picker({ onPick, onClose, padMode }: { onPick: (id: string | null) => v
   const reload = (m: string) => {
     setMsg(m)
     setTimeout(() => location.reload(), 800)
+  }
+  const [up, setUp] = useState<{ d: number; t: number; name: string } | null>(null)
+  const add = async (files: FileList | null) => {
+    const ok = Array.from(files ?? []).filter((f) => /\.sf[23]$/i.test(f.name))
+    if (!ok.length) return setMsg('Escolha arquivos .sf2 ou .sf3.')
+    setBusy(true)
+    setUp({ d: 0, t: ok.length, name: ok[0].name })
+    try {
+      const n = await addBanks(ok, (d, t, name) => setUp({ d, t, name }))
+      setUp(null)
+      reload(`${n} SoundFont(s) guardado(s). Recarregando…`)
+    } catch (e) {
+      setMsg('Não consegui guardar o arquivo: ' + (e instanceof Error ? e.message : String(e)))
+      setBusy(false)
+      setUp(null)
+    }
   }
   const isCustom = group === CUSTOM_GROUP
   const shown = useMemo(() => {
@@ -463,6 +480,14 @@ function Picker({ onPick, onClose, padMode }: { onPick: (id: string | null) => v
         {isCustom && (
           <div className="pick-tools">
             <input className="pick-search" type="search" placeholder="Buscar nos meus bancos…" value={q} onChange={(e) => setQ(e.target.value)} />
+            {personal && (listBanks().length >= MAX_BANKS ? (
+              <button className="ghost addsf" onClick={() => setMsg('Lista cheia. Use Editar para remover algum.')}>＋ Adicionar</button>
+            ) : (
+              <label className="ghost addsf" aria-disabled={busy}>
+                ＋ Adicionar
+                <input type="file" accept=".sf2,.sf3" multiple hidden disabled={busy} onChange={(e) => void add(e.target.files)} />
+              </label>
+            ))}
             {hasCustom && (
               <button className={'ghost' + (edit ? ' on' : '')} onClick={() => setEdit(!edit)}>
                 {edit ? 'Concluir' : 'Editar'}
@@ -479,6 +504,14 @@ function Picker({ onPick, onClose, padMode }: { onPick: (id: string | null) => v
               </button>
             )}
           </p>
+        )}
+        {up && (
+          <div className="upbox" role="status" aria-live="polite">
+            <b>Guardando {Math.min(up.d + 1, up.t)} de {up.t}…</b>
+            <span>{up.name}</span>
+            <progress max={up.t} value={up.d} />
+            <small>Pode demorar com arquivos grandes. Não feche esta tela.</small>
+          </div>
         )}
         {msg && <p className="pick-hint">{msg}</p>}
         {isCustom && bankInfo.failed.length > 0 && (() => {
@@ -537,7 +570,7 @@ function Picker({ onPick, onClose, padMode }: { onPick: (id: string | null) => v
             </button>
           ))}
           {!showFolders && shown.length === 0 && (
-            <p style={{ opacity: 0.6 }}>{isCustom ? 'Nenhum som aqui ainda.' : 'Nenhum som encontrado.'}</p>
+            <p style={{ opacity: 0.6 }}>{isCustom ? 'Nenhum som seu ainda. Toque em ＋ Adicionar e escolha um .sf2.' : 'Nenhum som encontrado.'}</p>
           )}
         </div>
       </div>
