@@ -143,7 +143,7 @@ export const slotOf = (id: string) => parseInt(id.slice(2), 10)
 export async function ensurePack(onStage?: (t: string) => void): Promise<void> {
   try {
     // Não há mais envio nem Biblioteca: bancos antigos que ficaram guardados no aparelho saem (só o do pacote do app fica).
-    for (const b of listBanks()) if (!/MuseScore_General_Lite/i.test(b.name)) { try { await removeBank(b.slot) } catch { /* segue */ } }
+    if (import.meta.env.VITE_PERSONAL !== '1') for (const b of listBanks()) if (!/MuseScore_General_Lite/i.test(b.name)) { try { await removeBank(b.slot) } catch { /* segue */ } }
     if (listBanks().some((b) => /MuseScore_General_Lite/i.test(b.name))) return
     if (typeof navigator !== 'undefined' && navigator.onLine === false) return
     if (listBanks().length >= MAX_BANKS) return
