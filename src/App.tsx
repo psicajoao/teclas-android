@@ -10,7 +10,6 @@ import { addBanks, MAX_BANKS, ensurePack, removeBank, getHidden, setHidden, slot
 import type { Timbre } from './timbres'
 import { customStatus } from './bank'
 import { FxSheet } from './fxpanel'
-import { PREMIUM_GROUP, premiumEnabled } from './premium'
 import { SoundSheet } from './soundpanel'
 import { hasSnd, sndOf } from './chanfx'
 import { slotsOf, fxDef, groupSummary } from './fx'
@@ -391,7 +390,7 @@ function Picker({ onPick, onClose, padMode }: { onPick: (id: string | null) => v
   const ver = useValue(customVersion)
   const hasCustom = ver > 0 && TIMBRES.some((t) => t.group === CUSTOM_GROUP)
   const hasPack = ver >= 0 && TIMBRES.some((t) => t.group === PACK_GROUP)
-  const ordered = premiumEnabled ? [PREMIUM_GROUP, PACK_GROUP, ...GROUPS.filter((g) => g !== PACK_GROUP && g !== PREMIUM_GROUP)] : [PACK_GROUP, ...GROUPS.filter((g) => g !== PACK_GROUP)] // Worship vem primeiro, como atalho
+  const ordered = [PACK_GROUP, ...GROUPS.filter((g) => g !== PACK_GROUP)] // Worship vem primeiro, como atalho
   const groups = [...(hasCustom ? [CUSTOM_GROUP] : []), ...(padMode ? ordered.filter((g) => g !== 'Bateria') : ordered).filter((g) => g !== PACK_GROUP || hasPack)]
   const [group, setGroup] = useState<string>(hasCustom ? CUSTOM_GROUP : 'Favoritos')
   const [q, setQ] = useState('')
