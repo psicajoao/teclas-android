@@ -8,6 +8,7 @@ import Capacitor
 class MainViewController: CAPBridgeViewController {
     override func capacitorDidLoad() {
         bridge?.registerPluginInstance(PalcoMidiPlugin())
+        bridge?.registerPluginInstance(PalcoSamplerPlugin())
     }
 }
 

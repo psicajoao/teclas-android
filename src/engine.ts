@@ -3,6 +3,7 @@ import { createValue } from './signal'
 import { listBanks, getBankData, ensureMigrated, bankInfo, BANK_STEP, customStatus } from './bank'
 import { registerCustom } from './timbres'
 import { premiumByOffset } from './premium'
+import { nativeSampler, nativeSamplerNow } from './nativesampler'
 import type { PremiumItem } from './premium'
 import type { BankMeta } from './bank'
 import { ChanFx, isNeutral, defaultSnd } from './chanfx'
@@ -350,6 +351,12 @@ export class Engine {
   }
 
   noteOn(note: number, velocity: number, channel = this.channel) {
+    const nat = this.chanNative[channel]
+    if (nat) {
+      if (velocity === 0) return this.noteOff(note, channel)
+      nativeSamplerNow()?.noteOn({ id: nat, note, vel: velocity })
+      return
+    }
     const syn = this.chanSyn[channel]
     if (syn) {
       const p = synPreset(syn)
@@ -370,6 +377,11 @@ export class Engine {
     this.synth?.noteOn(channel, note, velocity)
   }
   noteOff(note: number, channel = this.channel) {
+    const nat = this.chanNative[channel]
+    if (nat) {
+      nativeSamplerNow()?.noteOff({ id: nat, note })
+      return
+    }
     if (this.chanSyn[channel]) {
       if (this.chanSus[channel]) this.sustained[channel].add(note)
       else this.synVoices?.noteOff(channel, note)
@@ -381,6 +393,12 @@ export class Engine {
     this.synth?.noteOff(channel, note)
   }
   cc(controller: number, value: number, channel = this.channel) {
+    const nat = this.chanNative[channel]
+    if (nat) {
+      if (controller === 0 || controller === 32) return // seleção de banco: não vale para o motor nativo
+      nativeSamplerNow()?.cc({ id: nat, cc: controller, value })
+      return
+    }
     if (this.chanSyn[channel]) return this.synCc(controller, value, channel)
     // @ts-expect-error o tipo MIDIController é um enum numérico da biblioteca
     this.synth?.controllerChange(channel, controller, value)
@@ -404,6 +422,11 @@ export class Engine {
     }
   }
   pitchBend(value14: number, channel = this.channel) {
+    const nat = this.chanNative[channel]
+    if (nat) {
+      nativeSamplerNow()?.bend({ id: nat, value: value14 })
+      return
+    }
     if (this.chanSyn[channel]) {
       const st = this.chanSt[channel]
       st.bend = ((value14 - 8192) / 8192) * 200 // ±2 semitons
@@ -414,6 +437,16 @@ export class Engine {
   }
   program(program: number, channel = this.channel, bank = 0, lsb = 0) {
     this.chanSyn[channel] = null
+    const old = this.chanNative[channel]
+    const pmn = channel === 9 ? undefined : premiumByOffset(bank)
+    if (old) nativeSamplerNow()?.allOff({ id: old })
+    if (pmn?.native) {
+      this.chanNative[channel] = pmn.id
+      this.chanBank[channel] = bank
+      void this.ensureNative(pmn)
+      return
+    }
+    this.chanNative[channel] = null
     if (channel !== 9) {
       this.cc(0, bank, channel)
       this.cc(32, lsb, channel)
@@ -421,7 +454,7 @@ export class Engine {
     this.synth?.programChange(channel, program)
     this.chanBank[channel] = channel === 9 ? 0 : bank
     const pm = channel === 9 ? undefined : premiumByOffset(bank)
-    if (pm && this.synth) {
+    if (pm && !pm.native && this.synth) {
       void this.ensurePremium(pm).then(() => {
         // o banco acabou de chegar: reaplica o timbre no canal, se ele ainda aponta para este banco
         if (this.chanBank[channel] === bank && this.synth) {
@@ -433,6 +466,33 @@ export class Engine {
     }
   }
   private chanBank: number[] = Array(16).fill(0)
+  private chanNative: (string | null)[] = Array(16).fill(null)
+  private nativeLoaded = new Set<string>()
+  private nativeLoading = new Map<string, Promise<void>>()
+  /** Timbres pesados tocam no motor nativo do iPad: carrega o arquivo na primeira vez. */
+  private ensureNative(pm: PremiumItem): Promise<void> {
+    if (this.nativeLoaded.has(pm.id)) return Promise.resolve()
+    const run = this.nativeLoading.get(pm.id)
+    if (run) return run
+    const job = (async () => {
+      const pl = await nativeSampler()
+      if (!pl) throw new Error('motor nativo indisponível')
+      customStatus.set(`Carregando ${pm.name} (${pm.mb} MB, motor nativo)…`)
+      try {
+        await pl.load({ id: pm.id, file: 'premium/' + pm.file, program: pm.program })
+        this.nativeLoaded.add(pm.id)
+        customStatus.set('')
+        console.log('PK nativo ok', pm.id)
+      } catch (e) {
+        console.log('PK nativo ERRO', pm.id, String(e))
+        customStatus.set(`Não carregou ${pm.name}: ${e instanceof Error ? e.message : String(e)}`)
+        setTimeout(() => customStatus.set(''), 8000)
+        throw e
+      }
+    })().finally(() => this.nativeLoading.delete(pm.id))
+    this.nativeLoading.set(pm.id, job)
+    return job
+  }
   private premLoaded = new Map<string, { mb: number; t: number; offset: number }>()
   private premLoading = new Map<string, Promise<void>>()
   /** Biblioteca pessoal (só no iPad do João): carrega o SoundFont na primeira vez que o timbre é usado e descarrega os mais antigos. */
@@ -475,6 +535,7 @@ export class Engine {
     return job
   }
   panic() {
+    nativeSamplerNow()?.allOff({})
     this.synth?.stopAll(true)
     this.synVoices?.allOff()
     this.sustained.forEach((s) => s.clear())
