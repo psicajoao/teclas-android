@@ -63,7 +63,7 @@ export const TIMBRES: Timbre[] = [
 type Patch = { name: string; program: number; bankMSB: number; bankLSB: number; isDrum: boolean }
 /** Registra os timbres dos SoundFonts do usuário (grupo "Meus bancos"). */
 export function registerCustom(banks: { bank: { slot: number; name: string }; patches: Patch[] }[]) {
-  for (let i = TIMBRES.length - 1; i >= 0; i--) if (TIMBRES[i].group === CUSTOM_GROUP || (TIMBRES[i].group === PACK_GROUP && TIMBRES[i].origin === ORIGIN_MS)) TIMBRES.splice(i, 1)
+  for (let i = TIMBRES.length - 1; i >= 0; i--) if ((TIMBRES[i].group === CUSTOM_GROUP && !TIMBRES[i].id.startsWith('nb.')) || (TIMBRES[i].group === PACK_GROUP && TIMBRES[i].origin === ORIGIN_MS)) TIMBRES.splice(i, 1)
   for (const { bank, patches } of banks) {
     const label = bank.name.replace(/\.sf[23]$/i, '')
     // Pacote do app: quando o banco base está instalado, os timbres do pacote passam a existir.

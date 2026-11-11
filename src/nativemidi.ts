@@ -68,6 +68,7 @@ if (cap?.isNativePlatform?.()) {
       start(): Promise<{ ports: PortInfo[] }>
       addListener(name: string, fn: (d: never) => void): Promise<unknown>
     }
+    console.log('PK midi: registrando plugin')
     const plugin = registerPlugin<Plugin>('PalcoMidi')
     const inputs = new Map<string, NativeInput>()
     const access = {
@@ -98,7 +99,9 @@ if (cap?.isNativePlatform?.()) {
       }
       if (input) for (const ev of d.events) for (const m of splitMidi(ev.data)) input.emit(m)
     }) as (d: never) => void)
+    console.log('PK midi: listeners ok, chamando start')
     sync((await plugin.start()).ports)
+    console.log('PK midi: start ok')
     return access
   }
   ;(navigator as unknown as { requestMIDIAccess: () => Promise<unknown> }).requestMIDIAccess = () => (accessP ??= start())

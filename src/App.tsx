@@ -10,6 +10,7 @@ import { addBanks, MAX_BANKS, ensurePack, removeBank, getHidden, setHidden, slot
 import type { Timbre } from './timbres'
 import { customStatus } from './bank'
 import { FxSheet } from './fxpanel'
+import { isNativeApp, nativeSampler, nativeBanks, refreshNativeLibrary } from './nativesampler'
 import { SoundSheet } from './soundpanel'
 import { hasSnd, sndOf } from './chanfx'
 import { slotsOf, fxDef, groupSummary } from './fx'
@@ -391,7 +392,7 @@ function Picker({ onPick, onClose, padMode }: { onPick: (id: string | null) => v
   const hasCustom = ver > 0 && TIMBRES.some((t) => t.group === CUSTOM_GROUP)
   const hasPack = ver >= 0 && TIMBRES.some((t) => t.group === PACK_GROUP)
   const ordered = [PACK_GROUP, ...GROUPS.filter((g) => g !== PACK_GROUP)] // Worship vem primeiro, como atalho
-  const groups = [...(hasCustom ? [CUSTOM_GROUP] : []), ...(padMode ? ordered.filter((g) => g !== 'Bateria') : ordered).filter((g) => g !== PACK_GROUP || hasPack)]
+  const groups = [...(hasCustom || isNativeApp ? [CUSTOM_GROUP] : []), ...(padMode ? ordered.filter((g) => g !== 'Bateria') : ordered).filter((g) => g !== PACK_GROUP || hasPack)]
   const [group, setGroup] = useState<string>(hasCustom ? CUSTOM_GROUP : 'Favoritos')
   const [q, setQ] = useState('')
   const [bank, setBank] = useState<number | null>(null)
@@ -420,6 +421,33 @@ function Picker({ onPick, onClose, padMode }: { onPick: (id: string | null) => v
       setUp(null)
     }
   }
+  const addNative = async () => {
+    const pl = await nativeSampler()
+    if (!pl) return setMsg('O motor nativo não está disponível.')
+    setBusy(true)
+    setMsg('')
+    try {
+      const r = await pl.pick()
+      const files = await refreshNativeLibrary()
+      const parts: string[] = []
+      if (r.added) parts.push(`${r.added} SoundFont(s) adicionado(s). ${files.reduce((a, f) => a + f.presets.length, 0)} timbres na lista.`)
+      if (r.skipped.length) parts.push(`Não aceito (só .sf2 por enquanto): ${r.skipped.join(', ')}.`)
+      setMsg(parts.join(' '))
+    } catch (e) {
+      setMsg('Não consegui adicionar: ' + (e instanceof Error ? e.message : String(e)))
+    }
+    setBusy(false)
+  }
+  const removeNative = async (t: Timbre) => {
+    const pl = await nativeSampler()
+    const nb = nativeBanks.get(t.bank ?? -1)
+    if (!pl || !nb) return
+    setBusy(true)
+    try { await pl.removeFile({ file: nb.file }) } catch { /* segue */ }
+    await refreshNativeLibrary().catch(() => [])
+    setMsg(`${nb.name} removido.`)
+    setBusy(false)
+  }
   const isCustom = group === CUSTOM_GROUP
   const shown = useMemo(() => {
     let list = group === 'Favoritos' ? FAVORITES.map((id) => TIMBRES.find((t) => t.id === id)!) : TIMBRES.filter((t) => t.group === group || t.fam === group)
@@ -428,7 +456,7 @@ function Picker({ onPick, onClose, padMode }: { onPick: (id: string | null) => v
     if (padMode) list = list.filter((t) => !t.drum)
     if (isCustom) {
       list = list.filter((t) => !hidden.has(t.id))
-      if (bank !== null && !q.trim()) list = list.filter((t) => slotOf(t.id) === bank)
+      if (!isNativeApp && bank !== null && !q.trim()) list = list.filter((t) => slotOf(t.id) === bank)
       if (q.trim()) list = list.filter((t) => (t.name + ' ' + (t.src ?? '')).toLowerCase().includes(q.trim().toLowerCase()))
     }
     return list
@@ -454,7 +482,7 @@ function Picker({ onPick, onClose, padMode }: { onPick: (id: string | null) => v
   const folders = listBanks()
     .map((b) => ({ slot: b.slot, n: TIMBRES.filter((t) => t.group === CUSTOM_GROUP && slotOf(t.id) === b.slot && !hidden.has(t.id)).length }))
     .filter((f) => f.n > 0)
-  const showFolders = isCustom && bank === null && !q.trim() && folders.length > 0
+  const showFolders = !isNativeApp && isCustom && bank === null && !q.trim() && folders.length > 0
   const hiddenCount = TIMBRES.filter((t) => t.group === CUSTOM_GROUP && hidden.has(t.id)).length
   return (
     <div className="overlay" onClick={onClose}>
@@ -480,7 +508,10 @@ function Picker({ onPick, onClose, padMode }: { onPick: (id: string | null) => v
         {isCustom && (
           <div className="pick-tools">
             <input className="pick-search" type="search" placeholder="Buscar nos meus bancos…" value={q} onChange={(e) => setQ(e.target.value)} />
-            {import.meta.env.VITE_UPLOAD === '1' && (listBanks().length >= MAX_BANKS ? (
+            {isNativeApp && (
+              <button className="ghost addsf" disabled={busy} onClick={() => void addNative()}>＋ Adicionar</button>
+            )}
+            {!isNativeApp && import.meta.env.VITE_UPLOAD === '1' && (listBanks().length >= MAX_BANKS ? (
               <button className="ghost addsf" onClick={() => setMsg('Lista cheia. Use Editar para remover algum.')}>＋ Adicionar</button>
             ) : (
               <label className="ghost addsf" aria-disabled={busy}>
@@ -488,7 +519,7 @@ function Picker({ onPick, onClose, padMode }: { onPick: (id: string | null) => v
                 <input type="file" accept=".sf2,.sf3" multiple hidden disabled={busy} onChange={(e) => void add(e.target.files)} />
               </label>
             ))}
-            {hasCustom && (
+            {(hasCustom) && (
               <button className={'ghost' + (edit ? ' on' : '')} onClick={() => setEdit(!edit)}>
                 {edit ? 'Concluir' : 'Editar'}
               </button>
@@ -564,7 +595,7 @@ function Picker({ onPick, onClose, padMode }: { onPick: (id: string | null) => v
         )}
         <div className="cards">
           {!showFolders && shown.map((t) => (
-            <button key={t.id} className={'card' + (isCustom && edit ? ' edit' : '')} disabled={busy} onClick={() => (isCustom && edit ? void removeSound(t) : onPick(t.id))}>
+            <button key={t.id} className={'card' + (isCustom && edit ? ' edit' : '')} disabled={busy} onClick={() => (isCustom && edit ? void (isNativeApp ? removeNative(t) : removeSound(t)) : onPick(t.id))}>
               <small>{t.drum ? 'Kit' : t.syn ? 'Sint.' : t.group === CUSTOM_GROUP ? (t.src ?? '') : t.origin ? '' : t.program + 1}</small>
               {t.name}
             </button>
@@ -896,6 +927,7 @@ export default function App() {
     try {
       await ensurePack(setStage)
       await engine.start()
+      try { await refreshNativeLibrary() } catch { /* sem biblioteca nativa */ }
       rig.master = volume
       rig.split = song.split
       rig.transpose = transpose
@@ -910,8 +942,9 @@ export default function App() {
           // alguns navegadores só listam o teclado alguns segundos depois: duas checagens extras, sem repetir em laço
           window.setTimeout(() => bindInputs(access), 3000)
           window.setTimeout(() => bindInputs(access), 8000)
-        } catch {
-          setMidiNote('O MIDI foi bloqueado neste navegador. Abra no Chrome e permita o acesso ao MIDI. Dá para tocar pelo teclado da tela.')
+        } catch (e) {
+          console.log('PK MIDI ERRO', String(e), (e as Error)?.stack ?? '')
+          setMidiNote('O MIDI foi bloqueado neste navegador. Abra no Chrome e permita o acesso ao MIDI. Dá para tocar pelo teclado da tela.' + (import.meta.env.VITE_PERSONAL === '1' ? ' [erro: ' + String(e) + ']' : ''))
         }
       } else {
         setMidiNote('Este navegador não suporta MIDI. Use o Chrome.')

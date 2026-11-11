@@ -3,7 +3,7 @@ import { createValue } from './signal'
 import { listBanks, getBankData, ensureMigrated, bankInfo, BANK_STEP, customStatus } from './bank'
 import { registerCustom } from './timbres'
 import { premiumByOffset } from './premium'
-import { nativeSampler, nativeSamplerNow } from './nativesampler'
+import { nativeSampler, nativeSamplerNow, nativeBanks } from './nativesampler'
 import type { PremiumItem } from './premium'
 import type { BankMeta } from './bank'
 import { ChanFx, isNeutral, defaultSnd } from './chanfx'
@@ -443,7 +443,15 @@ export class Engine {
     if (pmn?.native) {
       this.chanNative[channel] = pmn.id
       this.chanBank[channel] = bank
-      void this.ensureNative(pmn)
+      void this.ensureNative({ id: pmn.id, file: 'premium/' + pmn.file, program: pmn.program, bank: 0, name: pmn.name, mb: pmn.mb })
+      return
+    }
+    const nb = channel === 9 ? undefined : nativeBanks.get(bank)
+    if (nb) {
+      const key = `${nb.file}:${lsb}:${program}`
+      this.chanNative[channel] = key
+      this.chanBank[channel] = bank
+      void this.ensureNative({ id: key, file: nb.file, program, bank: lsb, name: nb.name.replace(/\.sf2$/i, ''), mb: 0 })
       return
     }
     this.chanNative[channel] = null
@@ -470,23 +478,24 @@ export class Engine {
   private nativeLoaded = new Set<string>()
   private nativeLoading = new Map<string, Promise<void>>()
   /** Timbres pesados tocam no motor nativo do iPad: carrega o arquivo na primeira vez. */
-  private ensureNative(pm: PremiumItem): Promise<void> {
+  private ensureNative(pm: { id: string; file: string; program: number; bank: number; name: string; mb: number }): Promise<void> {
     if (this.nativeLoaded.has(pm.id)) return Promise.resolve()
     const run = this.nativeLoading.get(pm.id)
     if (run) return run
     const job = (async () => {
       const pl = await nativeSampler()
       if (!pl) throw new Error('motor nativo indisponível')
-      customStatus.set(`Carregando ${pm.name} (${pm.mb} MB, motor nativo)…`)
+      customStatus.set(`Carregando ${pm.name}${pm.mb ? ` (${pm.mb} MB)` : ''}, motor nativo…`)
       try {
-        await pl.load({ id: pm.id, file: 'premium/' + pm.file, program: pm.program })
+        const r = await pl.load({ id: pm.id, file: pm.file, program: pm.program, bank: pm.bank })
         this.nativeLoaded.add(pm.id)
-        customStatus.set('')
-        console.log('PK nativo ok', pm.id)
+        console.log('PK nativo ok', pm.id, JSON.stringify(r))
+        customStatus.set(r.engine === false ? `${pm.name} carregado, mas o áudio nativo não ligou: ${r.engineError ?? ''}` : `${pm.name} pronto (${Math.round(r.seconds ?? 0)} s)`)
+        setTimeout(() => customStatus.set(''), r.engine === false ? 15000 : 3000)
       } catch (e) {
         console.log('PK nativo ERRO', pm.id, String(e))
         customStatus.set(`Não carregou ${pm.name}: ${e instanceof Error ? e.message : String(e)}`)
-        setTimeout(() => customStatus.set(''), 8000)
+        setTimeout(() => customStatus.set(''), 12000)
         throw e
       }
     })().finally(() => this.nativeLoading.delete(pm.id))
