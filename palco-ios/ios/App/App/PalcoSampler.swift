@@ -173,10 +173,22 @@ public class PalcoSamplerPlugin: CAPPlugin, CAPBridgedPlugin, UIDocumentPickerDe
         pendingPick = call
         DispatchQueue.main.async { [weak self] in
             guard let self = self else { return }
-            let picker = UIDocumentPickerViewController(forOpeningContentTypes: [.data], asCopy: true)
+            let picker = UIDocumentPickerViewController(forOpeningContentTypes: [.item], asCopy: true)
             picker.allowsMultipleSelection = true
             picker.delegate = self
-            self.bridge?.viewController?.present(picker, animated: true)
+            var top: UIViewController? = self.bridge?.viewController
+            if top == nil {
+                top = UIApplication.shared.connectedScenes.compactMap { ($0 as? UIWindowScene)?.windows.first(where: { $0.isKeyWindow })?.rootViewController }.first
+            }
+            while let p = top?.presentedViewController { top = p }
+            guard let vc = top else {
+                self.pendingPick = nil
+                call.reject("sem tela para abrir o seletor")
+                return
+            }
+            vc.present(picker, animated: true) {
+                NSLog("PK seletor aberto")
+            }
         }
     }
 
