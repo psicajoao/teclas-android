@@ -20,7 +20,7 @@ type Plugin = {
 }
 let plugin: Plugin | null = null
 let tried = false
-export const isNativeApp = !!(window as unknown as { Capacitor?: { isNativePlatform?: () => boolean } }).Capacitor?.isNativePlatform?.()
+export const isNativeApp = !!(window as unknown as { Capacitor?: { isNativePlatform?: () => boolean } }).Capacitor?.isNativePlatform?.() || location.protocol === 'capacitor:' || !!(window as unknown as { webkit?: { messageHandlers?: { bridge?: unknown } } }).webkit?.messageHandlers?.bridge
 
 export async function nativeSampler(): Promise<Plugin | null> {
   if (plugin || tried) return plugin
