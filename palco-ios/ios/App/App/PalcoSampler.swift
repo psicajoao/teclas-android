@@ -245,7 +245,7 @@ public class PalcoSamplerPlugin: CAPPlugin, CAPBridgedPlugin, UIDocumentPickerDe
             var files: [[String: Any]] = []
             for u in urls.sorted(by: { $0.lastPathComponent < $1.lastPathComponent }) where u.pathExtension.lowercased() == "sf2" {
                 let size = (try? u.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
-                files.append(["file": "doc:" + u.lastPathComponent, "name": u.lastPathComponent, "size": size, "presets": self.presets(of: u)])
+                files.append(["file": "doc:" + u.lastPathComponent, "name": u.lastPathComponent, "size": size, "path": u.path, "presets": self.presets(of: u)])
             }
             call.resolve(["files": files])
         }

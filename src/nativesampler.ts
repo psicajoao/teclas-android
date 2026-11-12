@@ -8,7 +8,7 @@ export const nlog = createValue<string[]>([])
 export const nlogAdd = (m: string) => { console.log('PK ' + m); nlog.set([...nlog.get().slice(-5), m]) }
 
 type LoadRes = { ok: boolean; engine?: boolean; engineError?: string; seconds?: number }
-export type NativeFile = { file: string; name: string; size: number; presets: { name: string; program: number; bank: number }[] }
+export type NativeFile = { file: string; name: string; size: number; path?: string; presets: { name: string; program: number; bank: number }[] }
 type Plugin = {
   load(o: { id: string; file: string; program: number; bank?: number }): Promise<LoadRes>
   unload(o: { id: string }): Promise<void>
@@ -63,7 +63,7 @@ export async function nativeSampler(): Promise<Plugin | null> {
 export const nativeSamplerNow = () => plugin
 
 /** Número de "banco" MIDI interno de cada SoundFont importado (para a camada achar o arquivo). */
-export const nativeBanks = new Map<number, { file: string; name: string }>()
+export const nativeBanks = new Map<number, { file: string; name: string; size: number; url?: string }>()
 const FIRST_BANK = 41
 
 /** Lê a biblioteca do usuário (pasta do app no iPad) e registra os timbres em "Meus bancos". */
@@ -77,7 +77,8 @@ export async function refreshNativeLibrary(): Promise<NativeFile[]> {
   nativeBanks.clear()
   files.forEach((f, i) => {
     const bank = FIRST_BANK + i
-    nativeBanks.set(bank, { file: f.file, name: f.name })
+    const cap = (window as unknown as { Capacitor?: { convertFileSrc?: (p: string) => string } }).Capacitor
+    nativeBanks.set(bank, { file: f.file, name: f.name, size: f.size, url: f.path && cap?.convertFileSrc ? cap.convertFileSrc(f.path) : undefined })
     const label = f.name.replace(/\.sf2$/i, '')
     for (const p of f.presets) {
       TIMBRES.push({ id: `nb.${f.name}.${p.bank}.${p.program}`, name: p.name || `Preset ${p.program}`, program: p.program, group: CUSTOM_GROUP, bank, lsb: p.bank, src: label })

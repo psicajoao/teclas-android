@@ -455,6 +455,24 @@ export class Engine {
       return
     }
     const nb = channel === 9 ? undefined : nativeBanks.get(bank)
+    // SoundFonts importados até 150 MB tocam no motor web (mesmo som dos embutidos); só os gigantes vão para o nativo.
+    const webNb = nb && nb.url && nb.size <= 150_000_000 ? nb : undefined
+    if (webNb && this.synth) {
+      this.chanNative[channel] = null
+      this.chanBank[channel] = bank
+      const msb = bank + lsb
+      this.cc(0, msb, channel)
+      this.cc(32, 0, channel)
+      this.synth.programChange(channel, program)
+      void this.ensurePremium({ id: 'nb.' + webNb.file, name: webNb.name.replace(/\.sf2$/i, ''), file: webNb.file, offset: bank, mb: Math.ceil(webNb.size / 1e6), program: 0, url: webNb.url }).then(() => {
+        if (this.chanBank[channel] === bank && this.synth) {
+          this.cc(0, msb, channel)
+          this.cc(32, 0, channel)
+          this.synth.programChange(channel, program)
+        }
+      }).catch(() => {})
+      return
+    }
     if (nb) {
       const key = `${nb.file}:${lsb}:${program}`
       this.chanNative[channel] = key
@@ -536,7 +554,7 @@ export class Engine {
       }
       customStatus.set(`Carregando ${pm.name} (${pm.mb} MB)…`)
       try {
-        const r = await fetch(`${import.meta.env.BASE_URL}sounds/premium/${pm.file}`)
+        const r = await fetch(pm.url ?? `${import.meta.env.BASE_URL}sounds/premium/${pm.file}`)
         if (!r.ok) throw new Error('arquivo não encontrado (' + r.status + ')')
         const data = await r.arrayBuffer()
         const before = synth.presetList.length

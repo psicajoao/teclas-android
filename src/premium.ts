@@ -1,7 +1,7 @@
 // Biblioteca pessoal do iPad do João: SoundFonts embutidos no app (só na versão VITE_PERSONAL; os arquivos não vão para o repositório
 // nem para o site). Cada arquivo tem um timbre só e é carregado quando o timbre é escolhido.
 export const PREMIUM_GROUP = 'Meus sons'
-export type PremiumItem = { id: string; name: string; file: string; offset: number; mb: number; program: number; note?: string; fam?: string; native?: boolean }
+export type PremiumItem = { id: string; name: string; file: string; offset: number; mb: number; program: number; note?: string; fam?: string; native?: boolean; url?: string }
 // offset = banco MIDI (CC0) reservado para cada arquivo; fica fora dos múltiplos de 8 usados pelos bancos do usuário.
 export const PREMIUM: PremiumItem[] = [
   { id: 'pm.cathedral', name: 'Cathedral XP80', file: 'pm-cathedral.sf2', offset: 1, mb: 4, program: 0 },
