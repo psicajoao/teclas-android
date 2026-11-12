@@ -451,6 +451,7 @@ export class Engine {
       this.chanNative[channel] = pmn.id
       this.chanBank[channel] = bank
       this.nativeSpec[channel] = { id: pmn.id, file: 'premium/' + pmn.file, program: pmn.program, bank: 0, name: pmn.name, mb: pmn.mb }
+      if (performance.now() > 25000) void this.ensureNative(this.nativeSpec[channel]!).catch(() => {})
       return
     }
     const nb = channel === 9 ? undefined : nativeBanks.get(bank)
@@ -459,6 +460,8 @@ export class Engine {
       this.chanNative[channel] = key
       this.chanBank[channel] = bank
       this.nativeSpec[channel] = { id: key, file: nb.file, program, bank: lsb, name: nb.name.replace(/\.sf2$/i, ''), mb: 0 }
+      // escolha feita pelo usuário (depois da abertura): carrega já, para a primeira nota não se perder
+      if (performance.now() > 25000) void this.ensureNative(this.nativeSpec[channel]!).catch(() => {})
       return
     }
     this.chanNative[channel] = null
