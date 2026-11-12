@@ -53,6 +53,7 @@ public class PalcoSamplerPlugin: CAPPlugin, CAPBridgedPlugin, UIDocumentPickerDe
         do { try engine.start(); return nil } catch { return error.localizedDescription }
     }
 
+    private var lastNoteAt = Date.distantPast
     private var observing = false
     private func observe() {
         if observing { return }
@@ -123,7 +124,13 @@ public class PalcoSamplerPlugin: CAPPlugin, CAPBridgedPlugin, UIDocumentPickerDe
 
     @objc func noteOn(_ call: CAPPluginCall) {
         guard let id = call.getString("id"), let n = call.getInt("note"), let v = call.getInt("vel"), let s = sampler(id) else { return }
-        if !engine.isRunning { startEngine() }
+        // Depois de uns segundos parado o iOS pode ter pausado a sessão de áudio (o app mostra as teclas mas não sai som): reativa antes da nota.
+        let now = Date()
+        if !engine.isRunning || now.timeIntervalSince(lastNoteAt) > 2 {
+            try? AVAudioSession.sharedInstance().setActive(true)
+            if !engine.isRunning { startEngine() }
+        }
+        lastNoteAt = now
         s.startNote(UInt8(max(0, min(127, n))), withVelocity: UInt8(max(1, min(127, v))), onChannel: 0)
     }
 
