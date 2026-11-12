@@ -3,7 +3,7 @@ import { createValue } from './signal'
 import { listBanks, getBankData, ensureMigrated, bankInfo, BANK_STEP, customStatus } from './bank'
 import { registerCustom } from './timbres'
 import { premiumByOffset } from './premium'
-import { nativeSampler, nativeSamplerNow, nativeBanks } from './nativesampler'
+import { nativeSampler, nativeSamplerNow, nativeBanks, nlogAdd } from './nativesampler'
 import type { PremiumItem } from './premium'
 import type { BankMeta } from './bank'
 import { ChanFx, isNeutral, defaultSnd } from './chanfx'
@@ -357,6 +357,7 @@ export class Engine {
       // carrega o timbre pesado só na primeira nota (não no início do app: 300+ MB na memória travavam a abertura)
       if (!this.nativeLoaded.has(nat)) {
         const sp = this.nativeSpec[channel]
+        nlogAdd('nota sem timbre carregado: ' + nat + (sp ? '' : ' (sem spec)'))
         if (sp && sp.id === nat) void this.ensureNative(sp).catch(() => {})
         return
       }
@@ -490,17 +491,18 @@ export class Engine {
     const run = this.nativeLoading.get(pm.id)
     if (run) return run
     const job = (async () => {
+      nlogAdd('carregando ' + pm.name)
       const pl = await nativeSampler()
       if (!pl) throw new Error('motor nativo indisponível')
       customStatus.set(`Carregando ${pm.name}${pm.mb ? ` (${pm.mb} MB)` : ''}, motor nativo…`)
       try {
         const r = await pl.load({ id: pm.id, file: pm.file, program: pm.program, bank: pm.bank })
         this.nativeLoaded.add(pm.id)
-        console.log('PK nativo ok', pm.id, JSON.stringify(r))
+        nlogAdd('carregado ' + pm.name + ' ' + JSON.stringify(r))
         customStatus.set(r.engine === false ? `${pm.name} carregado, mas o áudio nativo não ligou: ${r.engineError ?? ''}` : `${pm.name} pronto (${Math.round(r.seconds ?? 0)} s)`)
         setTimeout(() => customStatus.set(''), r.engine === false ? 15000 : 3000)
       } catch (e) {
-        console.log('PK nativo ERRO', pm.id, String(e))
+        nlogAdd('ERRO carga ' + pm.name + ': ' + String(e))
         customStatus.set(`Não carregou ${pm.name}: ${e instanceof Error ? e.message : String(e)}`)
         setTimeout(() => customStatus.set(''), 12000)
         throw e

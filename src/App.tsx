@@ -10,7 +10,7 @@ import { addBanks, MAX_BANKS, ensurePack, removeBank, getHidden, setHidden, slot
 import type { Timbre } from './timbres'
 import { customStatus } from './bank'
 import { FxSheet } from './fxpanel'
-import { isNativeApp, nativeSampler, nativeBanks, refreshNativeLibrary } from './nativesampler'
+import { isNativeApp, nativeSampler, nativeBanks, refreshNativeLibrary, nlog, nlogAdd } from './nativesampler'
 import { SoundSheet } from './soundpanel'
 import { hasSnd, sndOf } from './chanfx'
 import { slotsOf, fxDef, groupSummary } from './fx'
@@ -422,18 +422,22 @@ function Picker({ onPick, onClose, padMode }: { onPick: (id: string | null) => v
     }
   }
   const addNative = async () => {
+    nlogAdd('toque em Adicionar')
     const pl = await nativeSampler()
     if (!pl) return setMsg('O motor nativo não está disponível.')
     setBusy(true)
-    setMsg('')
+    setMsg('Abrindo o seletor de arquivos…')
     try {
+      nlogAdd('chamando pick')
       const r = await pl.pick()
+      nlogAdd('pick voltou ' + JSON.stringify(r))
       const files = await refreshNativeLibrary()
       const parts: string[] = []
       if (r.added) parts.push(`${r.added} SoundFont(s) adicionado(s). ${files.reduce((a, f) => a + f.presets.length, 0)} timbres na lista.`)
       if (r.skipped.length) parts.push(`Não aceito (só .sf2 por enquanto): ${r.skipped.join(', ')}.`)
       setMsg(parts.join(' '))
     } catch (e) {
+      nlogAdd('pick ERRO ' + String(e))
       setMsg('Não consegui adicionar: ' + (e instanceof Error ? e.message : String(e)))
     }
     setBusy(false)
@@ -915,6 +919,7 @@ export default function App() {
   )
 
   const sfStatus = useValue(customStatus)
+  const diag = useValue(nlog)
   const audioIsOn = useValue(audioOn)
   const [prog, setProg] = useState(0)
   const [stage, setStage] = useState('Carregando sons…')
@@ -1436,6 +1441,15 @@ export default function App() {
         </button>
       )}
       {ready && sfStatus && <div className="sfchip">{sfStatus}</div>}
+      {ready && isNativeApp && (
+        <div
+          style={{ position: 'fixed', left: 8, bottom: 8, zIndex: 9999, maxWidth: '70vw', background: 'rgba(0,0,0,.75)', color: '#9fe', font: '11px/1.3 monospace', padding: '4px 8px', borderRadius: 6 }}
+          onClick={async () => { const pl = await nativeSampler(); try { nlogAdd('status ' + JSON.stringify(await pl?.status())) } catch (e) { nlogAdd('status ERRO ' + String(e)) } }}
+        >
+          <b>diag (toque p/ status)</b>
+          {diag.map((l, i) => <div key={i}>{l}</div>)}
+        </div>
+      )}
       {secMenu != null && song.sections[secMenu] && (
         <div className="overlay center" onClick={() => setSecMenu(null)}>
           <div className="secmenu" role="dialog" aria-label="Opções da seção" onClick={(e) => e.stopPropagation()}>

@@ -1,6 +1,11 @@
 // Motor de amostras nativo do iPad (plugin PalcoSampler, AVAudioUnitSampler). Só existe no app do iPad (Capacitor);
 // no navegador/Mac/Windows isso fica indisponível e o app usa o motor web de sempre.
 import { TIMBRES, CUSTOM_GROUP, customVersion } from './timbres'
+import { createValue } from './signal'
+
+/** Linhas de diagnóstico mostradas na tela do iPad (sem precisar do Xcode). */
+export const nlog = createValue<string[]>([])
+export const nlogAdd = (m: string) => { console.log('PK ' + m); nlog.set([...nlog.get().slice(-5), m]) }
 
 type LoadRes = { ok: boolean; engine?: boolean; engineError?: string; seconds?: number }
 export type NativeFile = { file: string; name: string; size: number; presets: { name: string; program: number; bank: number }[] }
@@ -17,6 +22,7 @@ type Plugin = {
   pick(): Promise<{ added: number; skipped: string[] }>
   library(): Promise<{ files: NativeFile[] }>
   removeFile(o: { file: string }): Promise<void>
+  status(): Promise<{ engine: boolean; samplers: string[]; route: string; volume: number }>
 }
 let plugin: Plugin | null = null
 let tried = false
@@ -29,7 +35,9 @@ export async function nativeSampler(): Promise<Plugin | null> {
     const { Capacitor, registerPlugin } = await import('@capacitor/core')
     if (!Capacitor.isNativePlatform()) return null
     plugin = registerPlugin<Plugin>('PalcoSampler')
-  } catch {
+    nlogAdd('plugin registrado')
+  } catch (e) {
+    nlogAdd('plugin ERRO ' + String(e))
     plugin = null
   }
   return plugin

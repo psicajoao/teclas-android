@@ -23,6 +23,7 @@ public class PalcoSamplerPlugin: CAPPlugin, CAPBridgedPlugin, UIDocumentPickerDe
         CAPPluginMethod(name: "pick", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "library", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "removeFile", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "status", returnType: CAPPluginReturnPromise),
     ]
 
     private let engine = AVAudioEngine()
@@ -169,7 +170,14 @@ public class PalcoSamplerPlugin: CAPPlugin, CAPBridgedPlugin, UIDocumentPickerDe
         return d
     }
 
+    @objc func status(_ call: CAPPluginCall) {
+        lock.lock(); let ids = Array(samplers.keys); lock.unlock()
+        let route = AVAudioSession.sharedInstance().currentRoute.outputs.map { $0.portName }.joined(separator: ",")
+        call.resolve(["engine": engine.isRunning, "samplers": ids, "route": route, "volume": AVAudioSession.sharedInstance().outputVolume])
+    }
+
     @objc func pick(_ call: CAPPluginCall) {
+        NSLog("PK pick chamado")
         pendingPick = call
         DispatchQueue.main.async { [weak self] in
             guard let self = self else { return }
