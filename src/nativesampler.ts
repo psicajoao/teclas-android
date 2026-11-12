@@ -34,7 +34,24 @@ export async function nativeSampler(): Promise<Plugin | null> {
   try {
     const { Capacitor, registerPlugin } = await import('@capacitor/core')
     if (!Capacitor.isNativePlatform()) return null
-    plugin = registerPlugin<Plugin>('PalcoSampler')
+    const raw = registerPlugin<Plugin>('PalcoSampler')
+    // O objeto do Capacitor responde a qualquer nome (inclusive "then"): devolvê-lo de uma função async trava a promessa para sempre.
+    // Por isso o plugin é embrulhado num objeto comum, sem "then".
+    plugin = {
+      load: (o) => raw.load(o),
+      unload: (o) => raw.unload(o),
+      noteOn: (o) => raw.noteOn(o),
+      noteOff: (o) => raw.noteOff(o),
+      cc: (o) => raw.cc(o),
+      bend: (o) => raw.bend(o),
+      allOff: (o) => raw.allOff(o),
+      setGain: (o) => raw.setGain(o),
+      setReverb: (o) => raw.setReverb(o),
+      pick: () => raw.pick(),
+      library: () => raw.library(),
+      removeFile: (o) => raw.removeFile(o),
+      status: () => raw.status(),
+    }
     nlogAdd('plugin registrado')
   } catch (e) {
     nlogAdd('plugin ERRO ' + String(e))
