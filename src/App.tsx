@@ -18,6 +18,7 @@ import type { FxSlot } from './fx'
 import { audioOn } from './engine'
 import { TIMBRES, GROUPS, FAVORITES, CUSTOM_GROUP, customVersion } from './timbres'
 import { PACK_GROUP } from './pack'
+import { premiumEnabled, PALCO_GROUP } from './premium'
 import { synTempo } from './synth'
 import { Drawer, SettingsPanel, LearnPanel } from './panels'
 import { Manual } from './manual'
@@ -389,10 +390,10 @@ function ZoneEditor({ layers, split, onChange, onClose }: { layers: Layer[]; spl
 
 function Picker({ onPick, onClose, padMode }: { onPick: (id: string | null) => void; onClose: () => void; padMode: boolean }) {
   const ver = useValue(customVersion)
-  const hasCustom = ver > 0 && TIMBRES.some((t) => t.group === CUSTOM_GROUP)
+  const hasCustom = !premiumEnabled && ver > 0 && TIMBRES.some((t) => t.group === CUSTOM_GROUP)
   const hasPack = ver >= 0 && TIMBRES.some((t) => t.group === PACK_GROUP)
   const ordered = [PACK_GROUP, ...GROUPS.filter((g) => g !== PACK_GROUP)] // Worship vem primeiro, como atalho
-  const groups = [...(hasCustom || isNativeApp ? [CUSTOM_GROUP] : []), ...(padMode ? ordered.filter((g) => g !== 'Bateria') : ordered).filter((g) => g !== PACK_GROUP || hasPack)]
+  const groups = [...(hasCustom ? [CUSTOM_GROUP] : []), ...(padMode ? ordered.filter((g) => g !== 'Bateria') : ordered).filter((g) => g !== PACK_GROUP || hasPack)]
   const [group, setGroup] = useState<string>(hasCustom ? CUSTOM_GROUP : 'Favoritos')
   const [q, setQ] = useState('')
   const [bank, setBank] = useState<number | null>(null)
@@ -512,7 +513,7 @@ function Picker({ onPick, onClose, padMode }: { onPick: (id: string | null) => v
         {isCustom && (
           <div className="pick-tools">
             <input className="pick-search" type="search" placeholder="Buscar nos meus bancos…" value={q} onChange={(e) => setQ(e.target.value)} />
-            {isNativeApp && (
+            {isNativeApp && !premiumEnabled && (
               <button className="ghost addsf" disabled={busy} onClick={() => void addNative()}>＋ Adicionar</button>
             )}
             {!isNativeApp && import.meta.env.VITE_UPLOAD === '1' && (listBanks().length >= MAX_BANKS ? (
@@ -605,7 +606,7 @@ function Picker({ onPick, onClose, padMode }: { onPick: (id: string | null) => v
             </button>
           ))}
           {!showFolders && shown.length === 0 && (
-            <p style={{ opacity: 0.6 }}>{isCustom ? 'Nenhum som seu ainda. Toque em ＋ Adicionar e escolha um .sf2.' : 'Nenhum som encontrado.'}</p>
+            <p style={{ opacity: 0.6 }}>{isCustom ? 'Nenhum som seu ainda. Toque em ＋ Adicionar e escolha um .sf2.' : group === PALCO_GROUP ? 'Os timbres do Palco Keys aparecem aqui.' : 'Nenhum som encontrado.'}</p>
           )}
         </div>
       </div>

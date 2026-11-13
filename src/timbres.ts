@@ -2,7 +2,7 @@ import { createValue } from './signal'
 import { SYN_PRESETS } from './synth'
 import { PACK, PACK_BASE, PACK_GROUP, PACK_BUILTIN, ORIGIN_MS, ORIGIN_GU } from './pack'
 import type { SndPatch } from './chanfx'
-import { PREMIUM, premiumEnabled } from './premium'
+import { PREMIUM, premiumEnabled, PALCO_GROUP } from './premium'
 
 export type Timbre = { id: string; name: string; program: number; group: string; drum?: boolean; bank?: number; lsb?: number; src?: string; syn?: string; snd?: SndPatch; origin?: string; fam?: string }
 
@@ -88,7 +88,7 @@ export function registerCustom(banks: { bank: { slot: number; name: string }; pa
   customVersion.set(customVersion.get() + 1)
 }
 
-export const GROUPS = [...FAMILIES.map((f) => f.group), SYNTH_GROUP, PACK_GROUP, 'Bateria']
+export const GROUPS = [...FAMILIES.map((f) => f.group), SYNTH_GROUP, PACK_GROUP, ...(premiumEnabled ? [PALCO_GROUP] : []), 'Bateria']
 if (premiumEnabled) for (const m of PREMIUM) TIMBRES.push({ id: m.id, name: m.name, program: m.program, group: m.fam ?? PACK_GROUP, fam: m.fam ?? PACK_GROUP, bank: m.offset, lsb: 0 })
 
 // Timbres de louvor mais usados, para acesso rápido.

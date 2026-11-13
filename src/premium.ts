@@ -15,5 +15,7 @@ export const PREMIUM: PremiumItem[] = [
   { id: 'pm.concertgrand', name: 'Concert Grand (Montage 8)', file: 'pm-concertgrand.sf2', offset: 10, mb: 211, program: 0, fam: 'Pianos', native: true },
   { id: 'pm.nordvelvet', name: 'Nord Velvet (pesado)', file: 'pm-nordvelvet.sf2', offset: 11, mb: 381, program: 0, note: 'experimental', native: true },
 ]
+/** Banco dos timbres que já vêm dentro do app (iPad pessoal). Por enquanto vazio: os timbres são colocados aqui depois. */
+export const PALCO_GROUP = 'Palco Keys'
 export const premiumEnabled = import.meta.env.VITE_PERSONAL === '1'
 export const premiumByOffset = (bank: number) => (premiumEnabled ? PREMIUM.find((p) => p.offset === bank) : undefined)
