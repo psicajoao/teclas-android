@@ -508,6 +508,33 @@ export class Engine {
   private nativeSpec: ({ id: string; file: string; program: number; bank: number; name: string; mb: number } | null)[] = Array(16).fill(null)
   private nativeLoaded = new Set<string>()
   private nativeInfo = new Map<string, { mb: number; t: number }>()
+  private nativeWatch = 0
+  /** Vigia o motor nativo: se um timbre nativo está em uso mas o motor parou ou perdeu o timbre, religa/recarrega e avisa na tela. */
+  private watchNative() {
+    if (this.nativeWatch) return
+    this.nativeWatch = window.setInterval(async () => {
+      const ids = [...new Set(this.chanNative.filter((x): x is string => !!x))]
+      if (!ids.length) return
+      const pl = nativeSamplerNow()
+      if (!pl) return
+      try {
+        const st = await pl.status()
+        if (!st.engine) {
+          customStatus.set('Áudio nativo parado: ' + (st.engineError || 'tentando religar…'))
+          setTimeout(() => customStatus.set(''), 4000)
+        }
+        for (const id of ids) {
+          if (this.nativeLoaded.has(id) && !st.samplers.includes(id) && !this.nativeLoading.has(id)) {
+            nlogAdd('timbre sumiu do motor nativo: ' + id)
+            this.nativeLoaded.delete(id)
+            this.nativeInfo.delete(id)
+            const sp = this.nativeSpec.find((x) => x && x.id === id)
+            if (sp) void this.ensureNative(sp).catch(() => {})
+          }
+        }
+      } catch { /* segue */ }
+    }, 2000)
+  }
   private nativeLoading = new Map<string, Promise<void>>()
   /** Timbres pesados tocam no motor nativo do iPad: carrega o arquivo na primeira vez. */
   private ensureNative(pm: { id: string; file: string; program: number; bank: number; name: string; mb: number }): Promise<void> {
@@ -539,6 +566,7 @@ export class Engine {
         const r = await pl.load({ id: pm.id, file: pm.file, program: pm.program, bank: pm.bank })
         this.nativeLoaded.add(pm.id)
         this.nativeInfo.set(pm.id, { mb: pm.mb, t: Date.now() })
+        this.watchNative()
         nlogAdd('carregado ' + pm.name + ' ' + JSON.stringify(r))
         customStatus.set(r.engine === false ? `${pm.name} carregado, mas o áudio nativo não ligou: ${r.engineError ?? ''}` : `${pm.name} pronto (${Math.round(r.seconds ?? 0)} s)`)
         setTimeout(() => customStatus.set(''), r.engine === false ? 15000 : 3000)

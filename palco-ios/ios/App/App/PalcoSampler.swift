@@ -208,7 +208,9 @@ public class PalcoSamplerPlugin: CAPPlugin, CAPBridgedPlugin, UIDocumentPickerDe
     @objc func status(_ call: CAPPluginCall) {
         lock.lock(); let ids = Array(samplers.keys); lock.unlock()
         let route = AVAudioSession.sharedInstance().currentRoute.outputs.map { $0.portName }.joined(separator: ",")
-        call.resolve(["engine": engine.isRunning, "samplers": ids, "route": route, "volume": AVAudioSession.sharedInstance().outputVolume])
+        var err = ""
+        if !engine.isRunning { err = startEngine() ?? "" }
+        call.resolve(["engine": engine.isRunning, "engineError": err, "samplers": ids, "route": route, "volume": AVAudioSession.sharedInstance().outputVolume])
     }
 
     @objc func pick(_ call: CAPPluginCall) {

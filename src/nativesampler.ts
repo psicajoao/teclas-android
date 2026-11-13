@@ -22,7 +22,7 @@ type Plugin = {
   pick(): Promise<{ added: number; skipped: string[] }>
   library(): Promise<{ files: NativeFile[] }>
   removeFile(o: { file: string }): Promise<void>
-  status(): Promise<{ engine: boolean; samplers: string[]; route: string; volume: number }>
+  status(): Promise<{ engine: boolean; engineError?: string; samplers: string[]; route: string; volume: number }>
 }
 let plugin: Plugin | null = null
 let tried = false
