@@ -42,6 +42,17 @@ public class PalcoSamplerPlugin: CAPPlugin, CAPBridgedPlugin, UIDocumentPickerDe
         engine.connect(reverb, to: engine.mainMixerNode, format: nil)
     }
 
+    /// Depois de uma mudança de configuração do áudio, refaz as ligações do grafo (reverb e cada timbre).
+    private func rewire() {
+        engine.disconnectNodeOutput(reverb)
+        engine.connect(reverb, to: engine.mainMixerNode, format: nil)
+        lock.lock(); let all = Array(samplers.values); lock.unlock()
+        for smp in all {
+            engine.disconnectNodeOutput(smp)
+            engine.connect(smp, to: reverb, format: nil)
+        }
+    }
+
     @discardableResult
     private func startEngine() -> String? {
         if engine.isRunning { return nil }
@@ -59,7 +70,24 @@ public class PalcoSamplerPlugin: CAPPlugin, CAPBridgedPlugin, UIDocumentPickerDe
         if observing { return }
         observing = true
         NotificationCenter.default.addObserver(forName: .AVAudioEngineConfigurationChange, object: engine, queue: nil) { [weak self] _ in
+            self?.rewire()
             self?.startEngine()
+        }
+        NotificationCenter.default.addObserver(forName: AVAudioSession.routeChangeNotification, object: nil, queue: nil) { [weak self] _ in
+            guard let self = self else { return }
+            if !self.engine.isRunning { self.rewire(); self.startEngine() }
+        }
+        NotificationCenter.default.addObserver(forName: AVAudioSession.mediaServicesWereResetNotification, object: nil, queue: nil) { [weak self] _ in
+            self?.rewire()
+            self?.startEngine()
+        }
+        // Vigia: se o motor parou (outro som do app mexeu na sessão de áudio) e há timbres carregados, religa.
+        DispatchQueue.main.async { [weak self] in
+            Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { _ in
+                guard let self = self else { return }
+                self.lock.lock(); let n = self.samplers.count; self.lock.unlock()
+                if n > 0 && !self.engine.isRunning { self.rewire(); self.startEngine() }
+            }
         }
         NotificationCenter.default.addObserver(forName: AVAudioSession.interruptionNotification, object: nil, queue: nil) { [weak self] n in
             if let t = n.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt, t == AVAudioSession.InterruptionType.ended.rawValue { self?.startEngine() }
