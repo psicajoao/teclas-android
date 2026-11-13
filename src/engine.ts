@@ -450,6 +450,7 @@ export class Engine {
     const pmn = channel === 9 ? undefined : premiumByOffset(bank)
     if (old) nativeSamplerNow()?.allOff({ id: old })
     if (pmn?.native) {
+      this.chanSel[channel] = null
       this.chanNative[channel] = pmn.id
       this.chanBank[channel] = bank
       this.nativeSpec[channel] = { id: pmn.id, file: 'premium/' + pmn.file, program: pmn.program, bank: 0, name: pmn.name, mb: pmn.mb }
@@ -463,6 +464,7 @@ export class Engine {
       this.chanNative[channel] = null
       this.chanBank[channel] = bank
       const msb = bank + lsb
+      this.chanSel[channel] = { msb, lsb: 0, program }
       this.cc(0, msb, channel)
       this.cc(32, 0, channel)
       this.synth.programChange(channel, program)
@@ -476,6 +478,7 @@ export class Engine {
       return
     }
     if (nb) {
+      this.chanSel[channel] = null
       const key = `${nb.file}:${lsb}:${program}`
       this.chanNative[channel] = key
       this.chanBank[channel] = bank
@@ -485,6 +488,7 @@ export class Engine {
       return
     }
     this.chanNative[channel] = null
+    this.chanSel[channel] = channel === 9 ? null : { msb: bank, lsb, program }
     if (channel !== 9) {
       this.cc(0, bank, channel)
       this.cc(32, lsb, channel)
@@ -504,6 +508,18 @@ export class Engine {
     }
   }
   private chanBank: number[] = Array(16).fill(0)
+  private chanSel: ({ msb: number; lsb: number; program: number } | null)[] = Array(16).fill(null)
+  /** Depois de carregar/descarregar um banco, o motor pode largar os timbres já escolhidos nos outros canais: reaplica todos. */
+  private reapplyAll() {
+    if (!this.synth) return
+    for (let ch = 0; ch < 16; ch++) {
+      const sel = this.chanSel[ch]
+      if (!sel || ch === 9) continue
+      this.cc(0, sel.msb, ch)
+      this.cc(32, sel.lsb, ch)
+      this.synth.programChange(ch, sel.program)
+    }
+  }
   private chanNative: (string | null)[] = Array(16).fill(null)
   private nativeSpec: ({ id: string; file: string; program: number; bank: number; name: string; mb: number } | null)[] = Array(16).fill(null)
   private nativeLoaded = new Set<string>()
@@ -599,6 +615,7 @@ export class Engine {
         try { await synth.soundBankManager.deleteSoundBank(id) } catch { /* segue */ }
         this.premLoaded.delete(id)
         used -= v.mb
+        this.reapplyAll()
       }
       if (used + pm.mb > BUDGET) {
         customStatus.set('Muitos sons pesados ligados juntos: o iPad pode ficar sem memória e algum som pode calar. Desligue alguma camada pesada.')
@@ -613,6 +630,7 @@ export class Engine {
         await synth.soundBankManager.addSoundBank(data, pm.id, pm.offset)
         for (let i = 0; i < 25 && synth.presetList.length === before; i++) await new Promise((x) => setTimeout(x, 60))
         this.premLoaded.set(pm.id, { mb: pm.mb, t: Date.now(), offset: pm.offset })
+        this.reapplyAll()
         console.log('PK premium ok', pm.id)
         customStatus.set('')
       } catch (e) {
