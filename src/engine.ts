@@ -361,6 +361,8 @@ export class Engine {
         if (sp && sp.id === nat) void this.ensureNative(sp).catch(() => {})
         return
       }
+      const ni = this.nativeInfo.get(nat)
+      if (ni) ni.t = Date.now()
       nativeSamplerNow()?.noteOn({ id: nat, note, vel: velocity })
       return
     }
@@ -477,7 +479,7 @@ export class Engine {
       const key = `${nb.file}:${lsb}:${program}`
       this.chanNative[channel] = key
       this.chanBank[channel] = bank
-      this.nativeSpec[channel] = { id: key, file: nb.file, program, bank: lsb, name: nb.name.replace(/\.sf2$/i, ''), mb: 0 }
+      this.nativeSpec[channel] = { id: key, file: nb.file, program, bank: lsb, name: nb.name.replace(/\.sf2$/i, ''), mb: Math.ceil(nb.size / 1e6) }
       // escolha feita pelo usuário (depois da abertura): carrega já, para a primeira nota não se perder
       if (performance.now() > 25000) void this.ensureNative(this.nativeSpec[channel]!).catch(() => {})
       return
@@ -505,6 +507,7 @@ export class Engine {
   private chanNative: (string | null)[] = Array(16).fill(null)
   private nativeSpec: ({ id: string; file: string; program: number; bank: number; name: string; mb: number } | null)[] = Array(16).fill(null)
   private nativeLoaded = new Set<string>()
+  private nativeInfo = new Map<string, { mb: number; t: number }>()
   private nativeLoading = new Map<string, Promise<void>>()
   /** Timbres pesados tocam no motor nativo do iPad: carrega o arquivo na primeira vez. */
   private ensureNative(pm: { id: string; file: string; program: number; bank: number; name: string; mb: number }): Promise<void> {
@@ -517,8 +520,25 @@ export class Engine {
       if (!pl) throw new Error('motor nativo indisponível')
       customStatus.set(`Carregando ${pm.name}${pm.mb ? ` (${pm.mb} MB)` : ''}, motor nativo…`)
       try {
+        // Memória: solta do motor nativo os timbres pesados que nenhuma camada usa agora (os mais antigos primeiro).
+        const NATIVE_BUDGET = 500
+        let used = [...this.nativeInfo.values()].reduce((x, v) => x + v.mb, 0)
+        const inUse = new Set(this.chanNative.filter((x): x is string => !!x))
+        for (const [id, v] of [...this.nativeInfo.entries()].sort((x, y) => x[1].t - y[1].t)) {
+          if (used + pm.mb <= NATIVE_BUDGET) break
+          if (inUse.has(id)) continue
+          try { await pl.unload({ id }) } catch { /* segue */ }
+          this.nativeLoaded.delete(id)
+          this.nativeInfo.delete(id)
+          used -= v.mb
+        }
+        if (used + pm.mb > NATIVE_BUDGET) {
+          customStatus.set('Muitos sons pesados ligados juntos: o iPad pode ficar sem memória e algum som pode calar. Desligue alguma camada pesada.')
+          await new Promise((r) => setTimeout(r, 2500))
+        }
         const r = await pl.load({ id: pm.id, file: pm.file, program: pm.program, bank: pm.bank })
         this.nativeLoaded.add(pm.id)
+        this.nativeInfo.set(pm.id, { mb: pm.mb, t: Date.now() })
         nlogAdd('carregado ' + pm.name + ' ' + JSON.stringify(r))
         customStatus.set(r.engine === false ? `${pm.name} carregado, mas o áudio nativo não ligou: ${r.engineError ?? ''}` : `${pm.name} pronto (${Math.round(r.seconds ?? 0)} s)`)
         setTimeout(() => customStatus.set(''), r.engine === false ? 15000 : 3000)
@@ -551,6 +571,10 @@ export class Engine {
         try { await synth.soundBankManager.deleteSoundBank(id) } catch { /* segue */ }
         this.premLoaded.delete(id)
         used -= v.mb
+      }
+      if (used + pm.mb > BUDGET) {
+        customStatus.set('Muitos sons pesados ligados juntos: o iPad pode ficar sem memória e algum som pode calar. Desligue alguma camada pesada.')
+        await new Promise((x) => setTimeout(x, 2500))
       }
       customStatus.set(`Carregando ${pm.name} (${pm.mb} MB)…`)
       try {
