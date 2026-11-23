@@ -690,7 +690,9 @@ export default function App() {
   useEffect(() => save(songs, songIdx, setlists, activeSl), [songs, songIdx, setlists, activeSl])
   useEffect(() => savePad(cfg), [cfg])
   useEffect(() => pad.setTone(cfg.bright, cfg.shimmer), [cfg.bright, cfg.shimmer])
-  useEffect(() => pad.setHold(cfg.hold ?? 0), [cfg.hold])
+  // Automático: sons de SoundFont importado costumam sumir sozinhos (amostras sem repetição); o pad renova a nota de tempos em tempos.
+  const autoHold = cfg.timbre.startsWith('bk') ? 8 : 0
+  useEffect(() => pad.setHold(cfg.hold ?? autoHold), [cfg.hold, autoHold])
   const stripsRef = useRef<HTMLElement>(null)
   const [page, setPage] = useState(0)
   const wide = useWide()
@@ -1727,7 +1729,8 @@ export default function App() {
               </label>
               <label className="row" title="Para sons que vão sumindo sozinhos: o pad renova a nota de tempos em tempos, sem corte.">
                 Manter nota
-                <select value={cfg.hold ?? 0} onChange={(e) => setCfg({ ...cfg, hold: +e.target.value })}>
+                <select value={cfg.hold ?? -1} onChange={(e) => setCfg({ ...cfg, hold: +e.target.value < 0 ? undefined : +e.target.value })}>
+                  <option value={-1}>Automático (recomendado)</option>
                   <option value={0}>Desligado</option>
                   {[6, 10, 15, 20, 30].map((f) => (
                     <option key={f} value={f}>
