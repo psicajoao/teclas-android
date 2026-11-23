@@ -387,12 +387,16 @@ function ZoneEditor({ layers, split, onChange, onClose }: { layers: Layer[]; spl
   )
 }
 
+// Importar SF2: liberado só em computador (Mac/Windows). iPad/iPhone/Android seguem fechados: o navegador deles limita memória e armazenamento.
+const isTouchDevice = /iPad|iPhone|iPod|Android/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+const canUploadSf2 = !isNativeApp && (!isTouchDevice || import.meta.env.VITE_UPLOAD === '1')
+
 function Picker({ onPick, onClose, padMode }: { onPick: (id: string | null) => void; onClose: () => void; padMode: boolean }) {
   const ver = useValue(customVersion)
   const hasCustom = ver > 0 && TIMBRES.some((t) => t.group === CUSTOM_GROUP)
   const hasPack = ver >= 0 && TIMBRES.some((t) => t.group === PACK_GROUP)
   const ordered = [PACK_GROUP, ...GROUPS.filter((g) => g !== PACK_GROUP)] // Worship vem primeiro, como atalho
-  const groups = [...(hasCustom || isNativeApp ? [CUSTOM_GROUP] : []), ...(padMode ? ordered.filter((g) => g !== 'Bateria') : ordered).filter((g) => g !== PACK_GROUP || hasPack)]
+  const groups = [...(hasCustom || isNativeApp || canUploadSf2 ? [CUSTOM_GROUP] : []), ...(padMode ? ordered.filter((g) => g !== 'Bateria') : ordered).filter((g) => g !== PACK_GROUP || hasPack)]
   const [group, setGroup] = useState<string>(hasCustom ? CUSTOM_GROUP : 'Favoritos')
   const [q, setQ] = useState('')
   const [bank, setBank] = useState<number | null>(null)
@@ -408,6 +412,8 @@ function Picker({ onPick, onClose, padMode }: { onPick: (id: string | null) => v
   const add = async (files: FileList | null) => {
     const ok = Array.from(files ?? []).filter((f) => /\.sf[23]$/i.test(f.name))
     if (!ok.length) return setMsg('Escolha arquivos .sf2 ou .sf3.')
+    const big = ok.filter((f) => f.size > 250e6)
+    if (big.length && !window.confirm(`${big.map((f) => f.name).join(', ')} tem mais de 250 MB. Pode demorar para carregar e usar muita memória do computador. Continuar?`)) return
     setBusy(true)
     setUp({ d: 0, t: ok.length, name: ok[0].name })
     try {
@@ -511,7 +517,7 @@ function Picker({ onPick, onClose, padMode }: { onPick: (id: string | null) => v
             {isNativeApp && (
               <button className="ghost addsf" disabled={busy} onClick={() => void addNative()}>＋ Adicionar</button>
             )}
-            {!isNativeApp && import.meta.env.VITE_UPLOAD === '1' && (listBanks().length >= MAX_BANKS ? (
+            {canUploadSf2 && (listBanks().length >= MAX_BANKS ? (
               <button className="ghost addsf" onClick={() => setMsg('Lista cheia. Use Editar para remover algum.')}>＋ Adicionar</button>
             ) : (
               <label className="ghost addsf" aria-disabled={busy}>
