@@ -401,6 +401,7 @@ function Picker({ onPick, onClose, padMode }: { onPick: (id: string | null) => v
   const [q, setQ] = useState('')
   const [bank, setBank] = useState<number | null>(null)
   const [edit, setEdit] = useState(false)
+  const [sel, setSel] = useState<Set<number>>(new Set())
   const [hidden, setHid] = useState(getHidden)
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState('')
@@ -484,6 +485,16 @@ function Picker({ onPick, onClose, padMode }: { onPick: (id: string | null) => v
       setHid(h)
     }
   }
+  const removeSelected = async () => {
+    if (!sel.size) return
+    if (!window.confirm(`Excluir ${sel.size} banco(s) do app? Os arquivos originais continuam no seu computador.`)) return
+    setBusy(true)
+    for (const slot of sel) { try { await removeBank(slot) } catch { /* segue */ } }
+    const h = new Set(hidden)
+    TIMBRES.filter((x) => x.group === CUSTOM_GROUP && sel.has(slotOf(x.id))).forEach((x) => h.delete(x.id))
+    setHidden(h)
+    reload('Removido. Recarregando…')
+  }
   const bankLabel = (slot: number) => (listBanks().find((b) => b.slot === slot)?.name ?? 'Banco ' + slot).replace(/\.sf[23]$/i, '').replace(/_/g, ' ')
   const folders = listBanks()
     .map((b) => ({ slot: b.slot, n: TIMBRES.filter((t) => t.group === CUSTOM_GROUP && slotOf(t.id) === b.slot && !hidden.has(t.id)).length }))
@@ -526,7 +537,7 @@ function Picker({ onPick, onClose, padMode }: { onPick: (id: string | null) => v
               </label>
             ))}
             {(hasCustom) && (
-              <button className={'ghost' + (edit ? ' on' : '')} onClick={() => setEdit(!edit)}>
+              <button className={'ghost' + (edit ? ' on' : '')} onClick={() => { setEdit(!edit); setSel(new Set()) }}>
                 {edit ? 'Concluir' : 'Editar'}
               </button>
             )}
@@ -534,8 +545,18 @@ function Picker({ onPick, onClose, padMode }: { onPick: (id: string | null) => v
         )}
         {isCustom && edit && (
           <p className="pick-hint">
-            Toque no som que quer tirar da lista.
-            {hiddenCount > 0 && (
+            {showFolders ? 'Toque nos bancos que quer excluir; vários de uma vez.' : 'Toque no som que quer tirar da lista.'}
+            {showFolders && (
+              <>
+                <button className="linkbtn" onClick={() => setSel(new Set(sel.size === folders.length ? [] : folders.map((f) => f.slot)))}>
+                  {sel.size === folders.length ? 'Desmarcar todos' : 'Marcar todos'}
+                </button>
+                <button className="ghost danger" disabled={!sel.size || busy} onClick={() => void removeSelected()}>
+                  Excluir {sel.size > 0 ? `(${sel.size})` : ''}
+                </button>
+              </>
+            )}
+            {!showFolders && hiddenCount > 0 && (
               <button className="linkbtn" onClick={() => { setHidden(new Set()); setHid(new Set()) }}>
                 Restaurar {hiddenCount} removido(s)
               </button>
@@ -592,7 +613,7 @@ function Picker({ onPick, onClose, padMode }: { onPick: (id: string | null) => v
         {showFolders && (
           <div className="cards">
             {folders.map((f) => (
-              <button key={f.slot} className="card" onClick={() => { setBank(f.slot); setEdit(false) }}>
+              <button key={f.slot} className={'card' + (edit ? ' pickable' : '') + (edit && sel.has(f.slot) ? ' sel' : '')} onClick={() => { if (edit) { const n = new Set(sel); if (n.has(f.slot)) n.delete(f.slot); else n.add(f.slot); setSel(n) } else { setBank(f.slot) } }}>
                 <small>{f.n} sons</small>
                 {bankLabel(f.slot)}
               </button>

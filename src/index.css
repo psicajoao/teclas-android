@@ -1372,3 +1372,11 @@ h1 span { color: var(--cyan); text-shadow: 0 0 16px #00e5ff77; }
 .man-pager { display: flex; justify-content: space-between; margin-top: 32px; }
 .man-pager .ghost:disabled { opacity: .3; }
 @media (max-width: 760px) { .man-wrap { grid-template-columns: 1fr; grid-template-rows: auto 1fr; } .man-nav { flex-direction: row; overflow-x: auto; border-right: 0; border-bottom: 1px solid var(--line); } .man-nav button { white-space: nowrap; } .man-body { padding: 18px; } }
+
+/* Meus bancos: marcar vários para excluir de uma vez */
+.card.pickable { position: relative; }
+.card.pickable::after { content: ''; position: absolute; top: 6px; right: 6px; width: 18px; height: 18px; border-radius: 5px; border: 2px solid #fff9; background: #0004; }
+.card.pickable.sel { outline: 2px solid #d83a3a; background: #d83a3a33; }
+.card.pickable.sel::after { content: '✓'; background: #d83a3a; border-color: #d83a3a; color: #fff; font-size: 13px; line-height: 14px; text-align: center; }
+.ghost.danger { border-color: #d83a3a; color: #ff8a8a; margin-left: 8px; }
+.ghost.danger:disabled { opacity: .4; }
