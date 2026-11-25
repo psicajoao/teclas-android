@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
-import { engine } from './engine'
+import { engine, perfMode, perfPref, setPerfPref } from './engine'
+import type { PerfPref } from './engine'
 import { useValue } from './signal'
 import { bindingsValue, waitingValue, lastMsgValue, setBinding, clearAll, describeBinding, learnOpen } from './learn'
 import { midiConf, setMidiConf } from './midiconf'
@@ -250,6 +251,20 @@ function AudioTab({ latency }: { latency: { handler: number; output: number } | 
         {kind.warn && <p className="set-note warn">Áudio por Bluetooth costuma somar de 100 a 250 ms de atraso. Para tocar ao vivo, prefira fone com cabo, interface de áudio USB ou a saída de fone do aparelho.</p>}
         {err && <p className="set-note warn">{err}</p>}
         <p className="set-note">Dica: fones ou caixas com cabo e interfaces USB têm o menor atraso.</p>
+      </div>
+      <div className="set-card">
+        <h3>Modo desempenho</h3>
+        <label className="set-field">
+          Para computadores mais fracos
+          <select value={perfPref()} onChange={(e) => { setPerfPref(e.target.value as PerfPref); tick((n) => n + 1) }}>
+            <option value="auto">Automático (recomendado)</option>
+            <option value="on">Ligado</option>
+            <option value="off">Desligado</option>
+          </select>
+        </label>
+        <p className="set-note">
+          Agora: <b>{perfMode ? 'ligado' : 'desligado'}</b>. Usa um buffer de áudio maior e menos vozes ao mesmo tempo, para o som não picotar em Macs e PCs mais antigos. O preço é um pouco mais de atraso entre apertar a tecla e ouvir (veja o "Atraso total estimado" acima). Muda só depois de recarregar a página (Cmd+R no Mac, Ctrl+R no Windows).
+        </p>
       </div>
       <Backup />
       <Diag />

@@ -16,6 +16,17 @@ const BASE = import.meta.env.BASE_URL
 /** true quando o áudio do navegador está ligado (rodando). */
 export const audioOn = createValue(true)
 
+/** Modo desempenho: computadores fracos (poucos núcleos) usam interpolação mais leve, menos vozes e um buffer de áudio maior. Automático por padrão; dá para forçar em Configurações. */
+export type PerfPref = 'auto' | 'on' | 'off'
+export function perfPref(): PerfPref {
+  try { const v = localStorage.getItem('pk-perf'); if (v === '1') return 'on'; if (v === '0') return 'off' } catch { /* */ }
+  return 'auto'
+}
+export function setPerfPref(p: PerfPref) {
+  try { if (p === 'auto') localStorage.removeItem('pk-perf'); else localStorage.setItem('pk-perf', p === 'on' ? '1' : '0') } catch { /* */ }
+}
+export const perfMode = (() => { const p = perfPref(); return p === 'on' || (p === 'auto' && (navigator.hardwareConcurrency || 8) <= 4) })()
+
 export class Engine {
   ctx: AudioContext | null = null
   synth: WorkletSynthesizer | null = null
@@ -127,7 +138,7 @@ export class Engine {
 
   private async init() {
     this.onStage?.('Ligando o áudio…')
-    const ctx = new AudioContext({ latencyHint: 'interactive' })
+    const ctx = new AudioContext({ latencyHint: perfMode ? 'playback' : 'interactive' })
     void ctx.resume().catch(() => {})
     // iOS: tocar mesmo com o modo silencioso ligado, e religar o áudio se o sistema o suspender.
     try { (navigator as unknown as { audioSession?: { type: string } }).audioSession!.type = sessionType() } catch { /* */ }
@@ -199,6 +210,11 @@ export class Engine {
     synth.setSystemParameter('reverbGain', 2.2)
     synth.setSystemParameter('chorusGain', 3)
     synth.setSystemParameter('delayGain', 2)
+    if (perfMode) {
+      // 0 = interpolação linear (a padrão é a cúbica, bem mais pesada); menos vozes simultâneas.
+      synth.setSystemParameter('interpolationType', 0 as never)
+      synth.setSystemParameter('voiceCap', 64)
+    }
     await Promise.race([ctx.resume(), new Promise((r) => setTimeout(r, 1500))])
     this.ctx = ctx
     this.synth = synth
