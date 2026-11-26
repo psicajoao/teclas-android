@@ -60,9 +60,20 @@ export const TIMBRES: Timbre[] = [
   ...DRUM_KITS.map(([program, name]) => ({ id: `drum${program}`, name, program, group: 'Bateria', drum: true })),
 ]
 
+// Os timbres de SoundFonts do usuário e do pacote só existem depois que o banco carrega (pode levar segundos).
+// Guardamos a lista da última vez para os nomes aparecerem logo na abertura, em vez de camadas vazias.
+const CACHE_KEY = 'pk-timbres-cache-1'
+const isCachedKind = (t: Timbre) => (t.group === CUSTOM_GROUP && !t.id.startsWith('nb.')) || (t.group === PACK_GROUP && t.origin === ORIGIN_MS)
+let cachedTim: Timbre[] = []
+try {
+  const raw = JSON.parse(localStorage.getItem(CACHE_KEY) || '[]') as Timbre[]
+  if (Array.isArray(raw)) cachedTim = raw.filter((t) => t && typeof t.id === 'string' && isCachedKind(t))
+} catch { /* */ }
+for (const t of cachedTim) if (!TIMBRES.some((x) => x.id === t.id)) TIMBRES.push(t)
+
 type Patch = { name: string; program: number; bankMSB: number; bankLSB: number; isDrum: boolean }
 /** Registra os timbres dos SoundFonts do usuário (grupo "Meus bancos"). */
-export function registerCustom(banks: { bank: { slot: number; name: string }; patches: Patch[] }[]) {
+export function registerCustom(banks: { bank: { slot: number; name: string }; patches: Patch[] }[], final = false) {
   for (let i = TIMBRES.length - 1; i >= 0; i--) if ((TIMBRES[i].group === CUSTOM_GROUP && !TIMBRES[i].id.startsWith('nb.')) || (TIMBRES[i].group === PACK_GROUP && TIMBRES[i].origin === ORIGIN_MS)) TIMBRES.splice(i, 1)
   for (const { bank, patches } of banks) {
     const label = bank.name.replace(/\.sf[23]$/i, '')
@@ -83,6 +94,20 @@ export function registerCustom(banks: { bank: { slot: number; name: string }; pa
       if (seen.has(id)) continue
       seen.add(id)
       TIMBRES.push({ id, name: p.name || `Preset ${p.program}`, program: p.program, group: CUSTOM_GROUP, bank: p.bankMSB, lsb: p.bankLSB, src: label })
+    }
+  }
+  if (final) {
+    cachedTim = TIMBRES.filter(isCachedKind)
+    try { localStorage.setItem(CACHE_KEY, JSON.stringify(cachedTim)) } catch { /* */ }
+  } else {
+    // Bancos que ainda não carregaram continuam aparecendo (a partir da lista guardada) até chegar a vez deles.
+    const loaded = new Set(banks.map((b) => b.bank.slot))
+    const msLoaded = banks.some((b) => b.bank.name.replace(/\.sf[23]$/i, '').toLowerCase() === PACK_BASE.toLowerCase())
+    for (const t of cachedTim) {
+      if (TIMBRES.some((x) => x.id === t.id)) continue
+      if (t.origin === ORIGIN_MS) { if (!msLoaded) TIMBRES.push(t); continue }
+      const m = /^bk(\d+)\./.exec(t.id)
+      if (m && !loaded.has(+m[1])) TIMBRES.push(t)
     }
   }
   customVersion.set(customVersion.get() + 1)

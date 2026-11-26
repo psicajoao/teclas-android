@@ -264,7 +264,7 @@ export class Engine {
       }
     }
     customStatus.set('')
-    registerCustom(found)
+    registerCustom(found, true)
   }
 
   async selfTest() {
